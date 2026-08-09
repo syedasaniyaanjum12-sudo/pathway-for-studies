@@ -10,6 +10,12 @@ export default defineConfig({
     // shared with the Data Analytics track, so it lives at the repo root
     // instead of being duplicated inside client/src.
     fs: { allow: ['..'] },
+    // Forward /api/* to the Express server (Phase 4) so client code can call
+    // fetch('/api/...') as a same-origin request — no CORS config to keep in
+    // sync between dev and prod, no hardcoded server port in client code.
+    proxy: {
+      '/api': 'http://localhost:4000',
+    },
   },
   optimizeDeps: {
     // Pyodide's package has Node-only code paths behind runtime checks

@@ -1,4 +1,5 @@
 import { loadPyodide, type PyodideInterface } from 'pyodide'
+import type { DatasetBinding } from '../../../shared/types'
 
 // Same source data as the SQL Practice track (see datasets/README.md) —
 // exported to CSV so pandas can read it directly.
@@ -26,13 +27,6 @@ const CSV_FILES: Record<string, string> = {
 // (numpy/pandas/matplotlib wheels) is too large to vendor into this repo, so
 // it's loaded from Pyodide's official CDN instead of client/public/.
 const PYODIDE_VERSION = '314.0.3'
-
-export interface DatasetBinding {
-  /** Python variable name the CSV should be loaded into, e.g. 'employees_df'. */
-  variable: string
-  /** Key into CSV_FILES, e.g. '/data/employees.csv'. */
-  file: string
-}
 
 export interface PythonRunResult {
   stdout: string

@@ -1,4 +1,4 @@
-import type { DatasetBinding } from '../../lib/pythonEngine'
+import type { DatasetBinding } from '../../../../shared/types'
 
 const COLUMNS_BY_FILE: Record<string, string[]> = {
   '/data/departments.csv': ['department_id', 'department_name', 'location'],

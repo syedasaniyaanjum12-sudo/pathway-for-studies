@@ -1,20 +1,4 @@
-import type { Difficulty } from '../types/difficulty'
-import type { DatasetBinding } from '../lib/pythonEngine'
-
-export interface DataAnalyticsExercise {
-  id: string
-  title: string
-  difficulty: Difficulty
-  topic: string
-  prompt: string
-  datasets: DatasetBinding[]
-  solutionCode: string
-  hint: string
-  /** True when the point of the exercise is a chart. The code still assigns
-   * `result` (so grading stays uniform with every other exercise) — this
-   * just tells the UI to show the rendered plot alongside the verdict. */
-  expectsPlot?: boolean
-}
+import type { DataAnalyticsExercise } from '../types.js'
 
 // Every exercise's code must assign its answer to a variable named `result`
 // — the same convention throughout, whether that's a number, a list, or a

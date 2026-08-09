@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
-import { sqlQuestions, type SqlDifficulty, type SqlQuestion } from '../../data/sqlQuestions'
+import { useEffect, useMemo, useState } from 'react'
+import type { Difficulty, SqlQuestion } from '../../../../shared/types'
+import { fetchSqlQuestions } from '../../lib/api'
 import { runQuery, type QueryResult } from '../../lib/sqlEngine'
 import { resultsMatch } from '../../lib/grading'
 import DifficultyBadge from '../../components/DifficultyBadge/DifficultyBadge'
@@ -7,13 +8,7 @@ import CodeEditor from '../../components/CodeEditor/CodeEditor'
 import ResultTable from '../../components/ResultTable/ResultTable'
 import SchemaReference from './SchemaReference'
 
-const DIFFICULTY_FILTERS: Array<SqlDifficulty | 'All'> = [
-  'All',
-  'Easy',
-  'Medium',
-  'Hard',
-  'Interview',
-]
+const DIFFICULTY_FILTERS: Array<Difficulty | 'All'> = ['All', 'Easy', 'Medium', 'Hard', 'Interview']
 
 type Verdict =
   | { status: 'idle' }
@@ -23,29 +18,41 @@ type Verdict =
   | { status: 'incorrect'; result: QueryResult }
 
 function SqlPractice() {
-  const [difficultyFilter, setDifficultyFilter] = useState<SqlDifficulty | 'All'>('All')
-  const [selectedQuestion, setSelectedQuestion] = useState<SqlQuestion>(sqlQuestions[0])
+  const [questions, setQuestions] = useState<SqlQuestion[] | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | 'All'>('All')
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [showHint, setShowHint] = useState(false)
   const [verdict, setVerdict] = useState<Verdict>({ status: 'idle' })
 
-  const visibleQuestions = useMemo(
-    () =>
-      difficultyFilter === 'All'
-        ? sqlQuestions
-        : sqlQuestions.filter((q) => q.difficulty === difficultyFilter),
-    [difficultyFilter],
-  )
+  useEffect(() => {
+    fetchSqlQuestions()
+      .then((data) => {
+        setQuestions(data)
+        setSelectedQuestionId(data[0]?.id ?? null)
+      })
+      .catch((err) => setLoadError(err instanceof Error ? err.message : String(err)))
+  }, [])
+
+  const visibleQuestions = useMemo(() => {
+    if (!questions) return []
+    return difficultyFilter === 'All'
+      ? questions
+      : questions.filter((q) => q.difficulty === difficultyFilter)
+  }, [questions, difficultyFilter])
+
+  const selectedQuestion = questions?.find((q) => q.id === selectedQuestionId) ?? null
 
   function selectQuestion(question: SqlQuestion) {
-    setSelectedQuestion(question)
+    setSelectedQuestionId(question.id)
     setQuery('')
     setShowHint(false)
     setVerdict({ status: 'idle' })
   }
 
   async function handleRun() {
-    if (!query.trim()) return
+    if (!query.trim() || !selectedQuestion) return
     setVerdict({ status: 'running' })
     try {
       // Two independent fresh databases: one for the learner's query, one
@@ -60,6 +67,19 @@ function SqlPractice() {
     } catch (err) {
       setVerdict({ status: 'error', message: err instanceof Error ? err.message : String(err) })
     }
+  }
+
+  if (loadError) {
+    return (
+      <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        Couldn't load SQL questions: {loadError}. Is the API server running (
+        <code className="font-mono">cd server && npm run dev</code>)?
+      </p>
+    )
+  }
+
+  if (!questions || !selectedQuestion) {
+    return <p className="text-sm text-slate-500">Loading questions…</p>
   }
 
   return (

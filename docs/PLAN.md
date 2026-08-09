@@ -18,44 +18,55 @@ This records the plan agreed on before implementation started, so decisions aren
 
 ## Architecture
 
-Two independent apps talking over a REST API, plus a shared types package:
+Two independent apps talking over a REST API, plus a shared types/data package:
 
 ```
 Browser (React SPA)
-   ├─ SQL Practice: loads a dataset into sql.js, runs queries locally, compares to expected result
-   ├─ Data Analytics: runs Python via Pyodide, compares output/plot to expected result
-   └─ AI Projects: browses/filters project cards
+   ├─ SQL Practice: fetches questions from the API, runs queries locally in sql.js, compares to expected result
+   ├─ Data Analytics: fetches exercises from the API, runs Python via Pyodide, compares output/plot to expected result
+   └─ AI Projects: fetches projects from the API, browses/filters cards
         │
-        ▼  REST (fetch) — added Phase 4
-Express API  ──────────────  PostgreSQL (via Prisma)
-   (questions, exercises, projects, users, submissions, progress)
+        ▼  REST (fetch, proxied by Vite's dev server — see client/vite.config.ts)
+Express API  ──────────────  SQLite dev / PostgreSQL prod (via Prisma)
+   (questions, exercises, projects — users/submissions/progress added Phase 5)
 ```
 
-Phases 1-3 run without a backend at all (static JSON data), so the UI works before databases enter the picture.
+Phases 1-3 ran without a backend at all (static JSON data), so the UI worked before databases entered the picture. Phase 4 moved that content into a real database and added the API in between — grading itself is unchanged (still sql.js/Pyodide in the browser), since the API only serves question/exercise/project content, not query execution.
 
 ## Folder Structure
 
 ```
 pathway-for-studies/
-├── client/                        # React frontend
+├── package.json                    # root convenience only: `npm run dev` starts client+server together
+├── client/                         # React frontend
 │   ├── src/
 │   │   ├── pages/
 │   │   │   ├── Home/
 │   │   │   ├── SqlPractice/
 │   │   │   ├── DataAnalytics/
 │   │   │   └── AiProjects/
-│   │   ├── components/
-│   │   │   ├── Layout/
-│   │   │   └── PlaceholderSection/  # temporary; removed as each page gets real content
-│   │   ├── data/                  # static question/exercise/project JSON (Phases 1-3)
+│   │   ├── components/            # Badge, CodeEditor, ResultTable, PythonResultView, ...
 │   │   ├── lib/
+│   │   │   ├── api.ts              # fetch wrappers for the Express API (Phase 4)
 │   │   │   ├── sqlEngine.ts        # sql.js wrapper (Phase 1)
-│   │   │   └── pythonEngine.ts     # Pyodide wrapper (Phase 3)
+│   │   │   ├── grading.ts          # SQL result comparison
+│   │   │   ├── pythonEngine.ts     # Pyodide wrapper (Phase 3)
+│   │   │   └── pythonGrading.ts    # Python result comparison
 │   │   └── App.tsx
 │   └── package.json
-├── server/                        # Express backend (added Phase 4)
-├── shared/                        # shared TypeScript types (added when server exists)
-├── datasets/                      # seed .sql / .csv files: Employees, Departments, Customers, Orders, Products, Sales
+├── server/                         # Express + Prisma backend (Phase 4)
+│   ├── prisma/
+│   │   ├── schema.prisma
+│   │   └── seed.ts                 # populates the DB from shared/data/*.ts
+│   ├── src/
+│   │   ├── lib/prisma.ts
+│   │   ├── routes/                 # GET /api/sql-questions, /api/data-analytics-exercises, /api/ai-projects
+│   │   └── index.ts
+│   └── package.json
+├── shared/                         # types + content shared by client (types only) and server (types + seed data)
+│   ├── types.ts
+│   └── data/                       # sqlQuestions.ts, dataAnalyticsExercises.ts, aiProjects.ts — human-edited source of new content
+├── datasets/                       # seed .sql / .csv files: Employees, Departments, Customers, Orders, Products, Sales
 └── docs/
 ```
 
@@ -63,17 +74,15 @@ pathway-for-studies/
 
 **Practice datasets** (the subject of exercises) — plain seed files for Employees, Departments, Customers, Orders, Products, Sales, loaded client-side per exercise.
 
-**App database** (Postgres via Prisma, added Phase 4):
+**App database** (SQLite for dev, Postgres for prod — same Prisma schema either way, just a different `datasource` provider + `DATABASE_URL`). As of Phase 4, only the content models exist; `User`/`SqlSubmission`/`UserProjectStatus` are added in Phase 5 once auth exists:
 
 ```
+SqlQuestion             (id, title, difficulty, topic, prompt, solutionQuery, orderMatters, hint)
+DataAnalyticsExercise   (id, title, difficulty, topic, prompt, datasets[Json], solutionCode, hint, expectsPlot)
+AiProject               (id, title, level, description, techStack[Json], skills[Json])
+
+-- Phase 5 additions:
 User                    (id, email, passwordHash, createdAt)
-SqlQuestion             (id, title, difficulty[Easy|Medium|Hard|Interview], datasetName,
-                         prompt, solutionQuery, expectedResultHash, hints[], tags[])
-DataAnalyticsExercise   (id, title, difficulty[Easy|Medium|Hard|Interview],
-                         topic[NumPy|Pandas|DataCleaning|MissingValues|EDA|Matplotlib],
-                         datasetName, prompt, starterCode, solutionCode, hints[])
-AiProject               (id, title, level[Beginner|Intermediate|Advanced|Portfolio],
-                         description, techStack[], starterRepoUrl)
 SqlSubmission           (id, userId, questionId, submittedQuery, isCorrect, submittedAt)
 UserProjectStatus       (id, userId, projectId, status[not-started|in-progress|done])
 ```
@@ -86,7 +95,7 @@ UserProjectStatus       (id, userId, projectId, status[not-started|in-progress|d
 | 1 | SQL Practice MVP (≥20 questions, sql.js, seeded datasets) | ✅ Done |
 | 2 | AI Projects MVP (static cards, 4 levels) | ✅ Done |
 | 3 | Data Analytics MVP (Pyodide, NumPy/Pandas/EDA/Matplotlib exercises) | ✅ Done |
-| 4 | Backend: Express + Prisma + Postgres, migrate static content into DB | Not started |
+| 4 | Backend: Express + Prisma + SQLite, migrate static content into DB, client fetches via API | ✅ Done |
 | 5 | Auth + progress tracking | Not started |
 | 6 | Optional "real backend" modes for Interview/advanced exercises | Not started |
 | 7 | Search/filter, polish, deploy | Not started |

@@ -1,0 +1,49 @@
+// Dev datasource is SQLite (zero setup — just a file). Swapping to Postgres
+// later (per docs/PLAN.md) is a one-line change: provider "postgresql" and a
+// DATABASE_URL pointing at a real server — the models below don't change.
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Content models only in this phase — User/SqlSubmission/UserProjectStatus
+// (auth + progress tracking) are Phase 5, per docs/PLAN.md.
+
+model SqlQuestion {
+  id            String  @id
+  title         String
+  difficulty    String
+  topic         String
+  prompt        String
+  solutionQuery String
+  orderMatters  Boolean @default(false)
+  hint          String
+}
+
+model DataAnalyticsExercise {
+  id           String  @id
+  title        String
+  difficulty   String
+  topic        String
+  prompt       String
+  /** Array of {variable, file} — see shared/types.ts DatasetBinding. */
+  datasets     Json
+  solutionCode String
+  hint         String
+  expectsPlot  Boolean @default(false)
+}
+
+model AiProject {
+  id          String @id
+  title       String
+  level       String
+  description String
+  /** string[] */
+  techStack   Json
+  /** string[] */
+  skills      Json
+}

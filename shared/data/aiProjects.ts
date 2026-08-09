@@ -1,13 +1,4 @@
-export type ProjectLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'Portfolio'
-
-export interface AiProject {
-  id: string
-  title: string
-  level: ProjectLevel
-  description: string
-  techStack: string[]
-  skills: string[]
-}
+import type { AiProject } from '../types.js'
 
 // 20 projects (5 per level) spanning the AI engineering skill progression:
 // calling LLM APIs → RAG/tool-use/evaluation → agents/fine-tuning/deployment

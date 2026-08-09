@@ -1,4 +1,4 @@
-import type { AiProject } from '../../data/aiProjects'
+import type { AiProject } from '../../../../shared/types'
 import ProjectLevelBadge from '../ProjectLevelBadge/ProjectLevelBadge'
 
 function ProjectCard({ project }: { project: AiProject }) {

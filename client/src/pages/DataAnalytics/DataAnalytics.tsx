@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { python } from '@codemirror/lang-python'
-import {
-  dataAnalyticsExercises,
-  type DataAnalyticsExercise,
-} from '../../data/dataAnalyticsExercises'
+import type { DataAnalyticsExercise, Difficulty } from '../../../../shared/types'
+import { fetchDataAnalyticsExercises } from '../../lib/api'
 import { runPython, warmUpEngine, type PythonRunResult } from '../../lib/pythonEngine'
 import { valuesMatch } from '../../lib/pythonGrading'
-import type { Difficulty } from '../../types/difficulty'
 import DifficultyBadge from '../../components/DifficultyBadge/DifficultyBadge'
 import CodeEditor from '../../components/CodeEditor/CodeEditor'
 import PythonResultView from '../../components/PythonResultView/PythonResultView'
@@ -22,10 +19,10 @@ type Verdict =
   | { status: 'incorrect'; result: PythonRunResult }
 
 function DataAnalytics() {
+  const [exercises, setExercises] = useState<DataAnalyticsExercise[] | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | 'All'>('All')
-  const [selectedExercise, setSelectedExercise] = useState<DataAnalyticsExercise>(
-    dataAnalyticsExercises[0],
-  )
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [showHint, setShowHint] = useState(false)
   const [verdict, setVerdict] = useState<Verdict>({ status: 'idle' })
@@ -36,23 +33,33 @@ function DataAnalytics() {
     warmUpEngine()
   }, [])
 
-  const visibleExercises = useMemo(
-    () =>
-      difficultyFilter === 'All'
-        ? dataAnalyticsExercises
-        : dataAnalyticsExercises.filter((ex) => ex.difficulty === difficultyFilter),
-    [difficultyFilter],
-  )
+  useEffect(() => {
+    fetchDataAnalyticsExercises()
+      .then((data) => {
+        setExercises(data)
+        setSelectedExerciseId(data[0]?.id ?? null)
+      })
+      .catch((err) => setLoadError(err instanceof Error ? err.message : String(err)))
+  }, [])
+
+  const visibleExercises = useMemo(() => {
+    if (!exercises) return []
+    return difficultyFilter === 'All'
+      ? exercises
+      : exercises.filter((ex) => ex.difficulty === difficultyFilter)
+  }, [exercises, difficultyFilter])
+
+  const selectedExercise = exercises?.find((ex) => ex.id === selectedExerciseId) ?? null
 
   function selectExercise(exercise: DataAnalyticsExercise) {
-    setSelectedExercise(exercise)
+    setSelectedExerciseId(exercise.id)
     setCode('')
     setShowHint(false)
     setVerdict({ status: 'idle' })
   }
 
   async function handleRun() {
-    if (!code.trim()) return
+    if (!code.trim() || !selectedExercise) return
     setVerdict({ status: 'running' })
     const runOptions = { checkVar: 'result', datasets: selectedExercise.datasets }
     const [actual, expected] = await Promise.all([
@@ -65,6 +72,19 @@ function DataAnalytics() {
     }
     const isCorrect = valuesMatch(actual.value, expected.value)
     setVerdict({ status: isCorrect ? 'correct' : 'incorrect', result: actual })
+  }
+
+  if (loadError) {
+    return (
+      <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        Couldn't load exercises: {loadError}. Is the API server running (
+        <code className="font-mono">cd server && npm run dev</code>)?
+      </p>
+    )
+  }
+
+  if (!exercises || !selectedExercise) {
+    return <p className="text-sm text-slate-500">Loading exercises…</p>
   }
 
   return (

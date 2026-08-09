@@ -1,19 +1,4 @@
-import type { Difficulty } from '../types/difficulty'
-
-export type SqlDifficulty = Difficulty
-
-export interface SqlQuestion {
-  id: string
-  title: string
-  difficulty: SqlDifficulty
-  topic: string
-  prompt: string
-  solutionQuery: string
-  /** True when row order is part of a correct answer (e.g. the query itself
-   * requires ORDER BY/LIMIT). Otherwise results are compared as sets. */
-  orderMatters?: boolean
-  hint: string
-}
+import type { SqlQuestion } from '../types.js'
 
 // 24 questions spanning every topic in the SQL Practice curriculum. Each
 // solutionQuery is executed live against a fresh copy of the sample database

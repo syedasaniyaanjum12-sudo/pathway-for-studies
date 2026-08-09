@@ -1,4 +1,4 @@
-import type { Difficulty } from '../../types/difficulty'
+import type { Difficulty } from '../../../../shared/types'
 import Badge, { type BadgeTone } from '../Badge/Badge'
 
 const DIFFICULTY_TONES: Record<Difficulty, BadgeTone> = {

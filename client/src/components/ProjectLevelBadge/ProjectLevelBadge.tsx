@@ -1,4 +1,4 @@
-import type { ProjectLevel } from '../../data/aiProjects'
+import type { ProjectLevel } from '../../../../shared/types'
 import Badge, { type BadgeTone } from '../Badge/Badge'
 
 const LEVEL_TONES: Record<ProjectLevel, BadgeTone> = {
