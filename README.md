@@ -20,4 +20,4 @@ Then open the printed local URL (typically http://localhost:5173).
 
 ## Status
 
-**Phase 1 complete** — SQL Practice is functional: 24 questions (Easy/Medium/Hard/Interview) across joins, CASE WHEN, string/date functions, window functions, views, indexes, and subqueries, running entirely in-browser via sql.js against a seeded sample database. Data Analytics and AI Engineer Projects are still placeholders (Phases 2–3).
+**Phase 2 complete** — SQL Practice (24 questions, sql.js) and AI Engineer Projects (20 projects across Beginner/Intermediate/Advanced/Portfolio, with a shared `Badge` component reused for both difficulty and level tags) are both functional. Data Analytics is still a placeholder (Phase 3).
