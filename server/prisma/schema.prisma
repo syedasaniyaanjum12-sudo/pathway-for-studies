@@ -10,9 +10,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Content models only in this phase — User/SqlSubmission/UserProjectStatus
-// (auth + progress tracking) are Phase 5, per docs/PLAN.md.
-
 model SqlQuestion {
   id            String  @id
   title         String
@@ -22,6 +19,8 @@ model SqlQuestion {
   solutionQuery String
   orderMatters  Boolean @default(false)
   hint          String
+
+  submissions SqlSubmission[]
 }
 
 model DataAnalyticsExercise {
@@ -35,6 +34,8 @@ model DataAnalyticsExercise {
   solutionCode String
   hint         String
   expectsPlot  Boolean @default(false)
+
+  submissions DataAnalyticsSubmission[]
 }
 
 model AiProject {
@@ -46,4 +47,64 @@ model AiProject {
   techStack   Json
   /** string[] */
   skills      Json
+
+  statuses UserProjectStatus[]
+}
+
+// --- Phase 5: auth + progress tracking ---
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  sqlSubmissions          SqlSubmission[]
+  dataAnalyticsSubmissions DataAnalyticsSubmission[]
+  projectStatuses         UserProjectStatus[]
+}
+
+// One row per attempt (not just the latest) — a simple, honest activity log.
+// "Has this learner ever solved this question" is `isCorrect: true` existing
+// for that (userId, questionId) pair, computed at query time rather than a
+// separate mutable "solved" flag that could drift from the submission log.
+model SqlSubmission {
+  id              String   @id @default(cuid())
+  userId          String
+  questionId      String
+  submittedQuery  String
+  isCorrect       Boolean
+  submittedAt     DateTime @default(now())
+
+  user     User        @relation(fields: [userId], references: [id])
+  question SqlQuestion @relation(fields: [questionId], references: [id])
+
+  @@index([userId, questionId])
+}
+
+model DataAnalyticsSubmission {
+  id            String   @id @default(cuid())
+  userId        String
+  exerciseId    String
+  submittedCode String
+  isCorrect     Boolean
+  submittedAt   DateTime @default(now())
+
+  user     User                  @relation(fields: [userId], references: [id])
+  exercise DataAnalyticsExercise @relation(fields: [exerciseId], references: [id])
+
+  @@index([userId, exerciseId])
+}
+
+model UserProjectStatus {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  status    String   @default("not-started") // 'not-started' | 'in-progress' | 'done'
+  updatedAt DateTime @updatedAt
+
+  user    User      @relation(fields: [userId], references: [id])
+  project AiProject @relation(fields: [projectId], references: [id])
+
+  @@unique([userId, projectId])
 }

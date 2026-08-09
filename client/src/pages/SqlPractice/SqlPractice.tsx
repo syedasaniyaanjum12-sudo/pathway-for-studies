@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Difficulty, SqlQuestion } from '../../../../shared/types'
-import { fetchSqlQuestions } from '../../lib/api'
+import { fetchSqlQuestions, fetchProgress, submitSqlQuestion } from '../../lib/api'
 import { runQuery, type QueryResult } from '../../lib/sqlEngine'
 import { resultsMatch } from '../../lib/grading'
+import { useAuth } from '../../context/AuthContext'
 import DifficultyBadge from '../../components/DifficultyBadge/DifficultyBadge'
 import CodeEditor from '../../components/CodeEditor/CodeEditor'
 import ResultTable from '../../components/ResultTable/ResultTable'
+import SolvedMark from '../../components/SolvedMark/SolvedMark'
 import SchemaReference from './SchemaReference'
 
 const DIFFICULTY_FILTERS: Array<Difficulty | 'All'> = ['All', 'Easy', 'Medium', 'Hard', 'Interview']
@@ -18,6 +20,7 @@ type Verdict =
   | { status: 'incorrect'; result: QueryResult }
 
 function SqlPractice() {
+  const { user } = useAuth()
   const [questions, setQuestions] = useState<SqlQuestion[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | 'All'>('All')
@@ -25,6 +28,7 @@ function SqlPractice() {
   const [query, setQuery] = useState('')
   const [showHint, setShowHint] = useState(false)
   const [verdict, setVerdict] = useState<Verdict>({ status: 'idle' })
+  const [solvedIds, setSolvedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetchSqlQuestions()
@@ -34,6 +38,20 @@ function SqlPractice() {
       })
       .catch((err) => setLoadError(err instanceof Error ? err.message : String(err)))
   }, [])
+
+  // Re-fetch whenever sign-in state changes: logging in should reveal
+  // existing progress, logging out should clear the checkmarks shown.
+  useEffect(() => {
+    if (!user) {
+      setSolvedIds(new Set())
+      return
+    }
+    fetchProgress()
+      .then((progress) => setSolvedIds(new Set(progress.solvedSqlQuestionIds)))
+      .catch(() => {
+        // Non-critical — the page still works without progress checkmarks.
+      })
+  }, [user])
 
   const visibleQuestions = useMemo(() => {
     if (!questions) return []
@@ -64,6 +82,18 @@ function SqlPractice() {
       ])
       const isCorrect = resultsMatch(actual, expected, Boolean(selectedQuestion.orderMatters))
       setVerdict(isCorrect ? { status: 'correct', result: actual } : { status: 'incorrect', result: actual })
+
+      if (user) {
+        if (isCorrect) {
+          // Optimistic update — the checkmark should appear immediately,
+          // not after a round-trip that could fail or lag.
+          setSolvedIds((prev) => new Set(prev).add(selectedQuestion.id))
+        }
+        submitSqlQuestion(selectedQuestion.id, query, isCorrect).catch(() => {
+          // Best-effort logging of an attempt; losing one submission record
+          // shouldn't block the learner from seeing their result.
+        })
+      }
     } catch (err) {
       setVerdict({ status: 'error', message: err instanceof Error ? err.message : String(err) })
     }
@@ -114,7 +144,10 @@ function SqlPractice() {
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium text-slate-800">{question.title}</span>
+                  <span className="flex items-center gap-1.5 font-medium text-slate-800">
+                    {solvedIds.has(question.id) && <SolvedMark />}
+                    {question.title}
+                  </span>
                   <DifficultyBadge difficulty={question.difficulty} />
                 </div>
                 <span className="text-xs text-slate-500">{question.topic}</span>

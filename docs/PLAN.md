@@ -28,10 +28,10 @@ Browser (React SPA)
         │
         ▼  REST (fetch, proxied by Vite's dev server — see client/vite.config.ts)
 Express API  ──────────────  SQLite dev / PostgreSQL prod (via Prisma)
-   (questions, exercises, projects — users/submissions/progress added Phase 5)
+   (questions, exercises, projects, users, submissions, progress)
 ```
 
-Phases 1-3 ran without a backend at all (static JSON data), so the UI worked before databases entered the picture. Phase 4 moved that content into a real database and added the API in between — grading itself is unchanged (still sql.js/Pyodide in the browser), since the API only serves question/exercise/project content, not query execution.
+Phases 1-3 ran without a backend at all (static JSON data), so the UI worked before databases entered the picture. Phase 4 moved that content into a real database and added the API in between — grading itself is unchanged (still sql.js/Pyodide in the browser), since the API only serves question/exercise/project content, not query execution. Phase 5 added JWT auth on top: the client holds a token (localStorage) and attaches it as `Authorization: Bearer <token>` to the handful of routes that need to know who's asking (recording a submission, setting a project status, reading `/api/me/progress`) — everything else stays public/read-only.
 
 ## Folder Structure
 
@@ -59,8 +59,9 @@ pathway-for-studies/
 │   │   ├── schema.prisma
 │   │   └── seed.ts                 # populates the DB from shared/data/*.ts
 │   ├── src/
-│   │   ├── lib/prisma.ts
-│   │   ├── routes/                 # GET /api/sql-questions, /api/data-analytics-exercises, /api/ai-projects
+│   │   ├── lib/{prisma,auth}.ts
+│   │   ├── middleware/requireAuth.ts
+│   │   ├── routes/                 # sql-questions, data-analytics-exercises, ai-projects, auth, me/progress
 │   │   └── index.ts
 │   └── package.json
 ├── shared/                         # types + content shared by client (types only) and server (types + seed data)
@@ -74,18 +75,22 @@ pathway-for-studies/
 
 **Practice datasets** (the subject of exercises) — plain seed files for Employees, Departments, Customers, Orders, Products, Sales, loaded client-side per exercise.
 
-**App database** (SQLite for dev, Postgres for prod — same Prisma schema either way, just a different `datasource` provider + `DATABASE_URL`). As of Phase 4, only the content models exist; `User`/`SqlSubmission`/`UserProjectStatus` are added in Phase 5 once auth exists:
+**App database** (SQLite for dev, Postgres for prod — same Prisma schema either way, just a different `datasource` provider + `DATABASE_URL`):
 
 ```
-SqlQuestion             (id, title, difficulty, topic, prompt, solutionQuery, orderMatters, hint)
-DataAnalyticsExercise   (id, title, difficulty, topic, prompt, datasets[Json], solutionCode, hint, expectsPlot)
-AiProject               (id, title, level, description, techStack[Json], skills[Json])
+SqlQuestion               (id, title, difficulty, topic, prompt, solutionQuery, orderMatters, hint)
+DataAnalyticsExercise     (id, title, difficulty, topic, prompt, datasets[Json], solutionCode, hint, expectsPlot)
+AiProject                 (id, title, level, description, techStack[Json], skills[Json])
 
--- Phase 5 additions:
-User                    (id, email, passwordHash, createdAt)
-SqlSubmission           (id, userId, questionId, submittedQuery, isCorrect, submittedAt)
-UserProjectStatus       (id, userId, projectId, status[not-started|in-progress|done])
+User                      (id, email, passwordHash, createdAt)
+SqlSubmission             (id, userId, questionId, submittedQuery, isCorrect, submittedAt)
+DataAnalyticsSubmission   (id, userId, exerciseId, submittedCode, isCorrect, submittedAt)
+UserProjectStatus         (id, userId, projectId, status[not-started|in-progress|done], updatedAt)
 ```
+
+Submissions are an append-only attempt log (one row per "Run", not just the latest) rather than a single mutable "solved" flag — "has this learner ever solved X" is computed at query time (`GET /api/me/progress`) by checking whether any `isCorrect: true` row exists for that (user, question) pair.
+
+**Trust boundary, stated plainly:** grading still happens entirely client-side (sql.js/Pyodide). The submission endpoints record whatever `isCorrect` value the client reports — the server never re-executes the query/code itself. A learner could technically POST `isCorrect: true` without solving anything. For a learning tool with no certification value at stake, that's an acceptable trade-off (the same one made in Phase 4 when solution code was exposed to the client at all) — revisit if this ever needs to mean something to someone other than the learner.
 
 ## Development Phases
 
@@ -96,6 +101,6 @@ UserProjectStatus       (id, userId, projectId, status[not-started|in-progress|d
 | 2 | AI Projects MVP (static cards, 4 levels) | ✅ Done |
 | 3 | Data Analytics MVP (Pyodide, NumPy/Pandas/EDA/Matplotlib exercises) | ✅ Done |
 | 4 | Backend: Express + Prisma + SQLite, migrate static content into DB, client fetches via API | ✅ Done |
-| 5 | Auth + progress tracking | Not started |
+| 5 | Auth (JWT register/login) + progress tracking (submissions, project status) across all 3 tracks | ✅ Done |
 | 6 | Optional "real backend" modes for Interview/advanced exercises | Not started |
 | 7 | Search/filter, polish, deploy | Not started |

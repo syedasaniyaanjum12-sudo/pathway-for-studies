@@ -48,3 +48,25 @@ export interface AiProject {
   techStack: string[]
   skills: string[]
 }
+
+// --- Phase 5: auth + progress tracking ---
+
+export interface AuthUser {
+  id: string
+  email: string
+}
+
+export interface AuthResponse {
+  token: string
+  user: AuthUser
+}
+
+export type ProjectStatus = 'not-started' | 'in-progress' | 'done'
+
+/** Response shape of GET /api/me/progress — everything the UI needs to
+ * render checkmarks/status across all three tracks in one request. */
+export interface ProgressSummary {
+  solvedSqlQuestionIds: string[]
+  solvedExerciseIds: string[]
+  projectStatuses: Record<string, ProjectStatus>
+}

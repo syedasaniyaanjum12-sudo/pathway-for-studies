@@ -6,7 +6,7 @@ A learning platform with three tracks:
 - **Data Analytics** — NumPy/Pandas/EDA/Matplotlib exercises, run entirely in-browser via Pyodide.
 - **AI Engineer Projects** — a project catalog across Beginner/Intermediate/Advanced/Portfolio levels.
 
-Content (questions/exercises/projects) is served by a small Express + Prisma API; grading itself still happens client-side (sql.js/Pyodide), so learner code never leaves the browser.
+Content (questions/exercises/projects) is served by a small Express + Prisma API; grading itself still happens client-side (sql.js/Pyodide), so learner code never leaves the browser. Signing in (email/password) saves your progress — solved questions/exercises and project status — across sessions.
 
 See [`docs/PLAN.md`](docs/PLAN.md) for the full architecture, tech stack, folder structure, and phased build-out plan.
 
@@ -29,10 +29,11 @@ Open http://localhost:5173. (You can also run `cd server && npm run dev` and `cd
 
 ## Status
 
-**Phase 4 complete** — all three tracks are functional, now backed by a real database:
+**Phase 5 complete** — all three tracks are functional, backed by a real database, with accounts and progress tracking:
 - SQL Practice: 24 questions, sql.js
 - AI Engineer Projects: 20 projects across 4 levels
 - Data Analytics: 19 exercises (NumPy/Pandas/Data Cleaning/Missing Values/EDA/Matplotlib), running in-browser via Pyodide
-- Backend: Express + Prisma (SQLite for dev), serving all three content types over `/api/*`; the client fetches from it instead of importing static data
+- Backend: Express + Prisma (SQLite for dev), serving all three content types over `/api/*`
+- Auth: email/password with JWTs (`/api/auth/register`, `/login`, `/me`); signed-in users get solved-question checkmarks and can track AI project status (not-started/in-progress/done)
 
-No auth or progress tracking yet (Phase 5).
+Next up (Phase 6): optional server-side grading modes for Interview-level questions, closer to a real interview environment.

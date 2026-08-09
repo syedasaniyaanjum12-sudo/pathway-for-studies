@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { python } from '@codemirror/lang-python'
 import type { DataAnalyticsExercise, Difficulty } from '../../../../shared/types'
-import { fetchDataAnalyticsExercises } from '../../lib/api'
+import { fetchDataAnalyticsExercises, fetchProgress, submitDataAnalyticsExercise } from '../../lib/api'
 import { runPython, warmUpEngine, type PythonRunResult } from '../../lib/pythonEngine'
 import { valuesMatch } from '../../lib/pythonGrading'
+import { useAuth } from '../../context/AuthContext'
 import DifficultyBadge from '../../components/DifficultyBadge/DifficultyBadge'
 import CodeEditor from '../../components/CodeEditor/CodeEditor'
 import PythonResultView from '../../components/PythonResultView/PythonResultView'
+import SolvedMark from '../../components/SolvedMark/SolvedMark'
 import DatasetReference from './DatasetReference'
 
 const DIFFICULTY_FILTERS: Array<Difficulty | 'All'> = ['All', 'Easy', 'Medium', 'Hard', 'Interview']
@@ -19,6 +21,7 @@ type Verdict =
   | { status: 'incorrect'; result: PythonRunResult }
 
 function DataAnalytics() {
+  const { user } = useAuth()
   const [exercises, setExercises] = useState<DataAnalyticsExercise[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | 'All'>('All')
@@ -26,6 +29,7 @@ function DataAnalytics() {
   const [code, setCode] = useState('')
   const [showHint, setShowHint] = useState(false)
   const [verdict, setVerdict] = useState<Verdict>({ status: 'idle' })
+  const [solvedIds, setSolvedIds] = useState<Set<string>>(new Set())
 
   // Start downloading Pyodide as soon as this page is visited, rather than
   // waiting for the learner's first "Run" click.
@@ -41,6 +45,18 @@ function DataAnalytics() {
       })
       .catch((err) => setLoadError(err instanceof Error ? err.message : String(err)))
   }, [])
+
+  useEffect(() => {
+    if (!user) {
+      setSolvedIds(new Set())
+      return
+    }
+    fetchProgress()
+      .then((progress) => setSolvedIds(new Set(progress.solvedExerciseIds)))
+      .catch(() => {
+        // Non-critical — the page still works without progress checkmarks.
+      })
+  }, [user])
 
   const visibleExercises = useMemo(() => {
     if (!exercises) return []
@@ -72,6 +88,16 @@ function DataAnalytics() {
     }
     const isCorrect = valuesMatch(actual.value, expected.value)
     setVerdict({ status: isCorrect ? 'correct' : 'incorrect', result: actual })
+
+    if (user) {
+      if (isCorrect) {
+        setSolvedIds((prev) => new Set(prev).add(selectedExercise.id))
+      }
+      submitDataAnalyticsExercise(selectedExercise.id, code, isCorrect).catch(() => {
+        // Best-effort logging of an attempt; losing one submission record
+        // shouldn't block the learner from seeing their result.
+      })
+    }
   }
 
   if (loadError) {
@@ -119,7 +145,10 @@ function DataAnalytics() {
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium text-slate-800">{exercise.title}</span>
+                  <span className="flex items-center gap-1.5 font-medium text-slate-800">
+                    {solvedIds.has(exercise.id) && <SolvedMark />}
+                    {exercise.title}
+                  </span>
                   <DifficultyBadge difficulty={exercise.difficulty} />
                 </div>
                 <span className="text-xs text-slate-500">{exercise.topic}</span>

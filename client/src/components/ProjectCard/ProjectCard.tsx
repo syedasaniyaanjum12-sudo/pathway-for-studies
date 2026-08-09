@@ -1,7 +1,17 @@
-import type { AiProject } from '../../../../shared/types'
+import type { AiProject, ProjectStatus } from '../../../../shared/types'
 import ProjectLevelBadge from '../ProjectLevelBadge/ProjectLevelBadge'
 
-function ProjectCard({ project }: { project: AiProject }) {
+const STATUS_OPTIONS: ProjectStatus[] = ['not-started', 'in-progress', 'done']
+
+type ProjectCardProps = {
+  project: AiProject
+  /** Omitted entirely (rather than shown disabled) when signed out — status
+   * tracking has nothing to attach to without a user. */
+  status?: ProjectStatus
+  onStatusChange?: (status: ProjectStatus) => void
+}
+
+function ProjectCard({ project, status, onStatusChange }: ProjectCardProps) {
   return (
     <article className="flex flex-col rounded-lg border border-slate-200 bg-white p-5">
       <div className="flex items-start justify-between gap-2">
@@ -17,6 +27,19 @@ function ProjectCard({ project }: { project: AiProject }) {
         ))}
       </div>
       <p className="mt-3 text-xs text-slate-400">Skills: {project.skills.join(', ')}</p>
+      {onStatusChange && (
+        <select
+          value={status ?? 'not-started'}
+          onChange={(e) => onStatusChange(e.target.value as ProjectStatus)}
+          className="mt-3 rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700"
+        >
+          {STATUS_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      )}
     </article>
   )
 }
