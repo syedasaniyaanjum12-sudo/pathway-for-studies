@@ -14,8 +14,10 @@ let sqlJsPromise: ReturnType<typeof initSqlJs> | null = null
 /** Loads the sql.js WASM runtime once and reuses it for every database. */
 function loadSqlJs() {
   if (!sqlJsPromise) {
-    // sql-wasm.wasm is copied into client/public/ (see README) so it's
-    // served as a static file at the site root.
+    // Vite resolves sql.js's package.json "browser" field, which loads
+    // sql-wasm-browser.js — that file requests sql-wasm-browser.wasm (NOT
+    // sql-wasm.wasm, the "main"-field build's file — they're byte-identical,
+    // just named differently). That's the file copied into client/public/.
     sqlJsPromise = initSqlJs({ locateFile: (file) => `/${file}` })
   }
   return sqlJsPromise

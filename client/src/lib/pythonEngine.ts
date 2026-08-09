@@ -114,6 +114,18 @@ def __run_cell(code, check_var, datasets_json):
 `
 
 let enginePromise: Promise<PyodideInterface> | null = null
+// The __run_cell Python function, fetched once and called directly with
+// arguments (see runPython below) — NOT via pyodide.globals.set() + eval'd
+// string. That earlier approach set arguments as globals on the one shared
+// interpreter, which is a real race: DataAnalytics.tsx grades a submission
+// by running the learner's code and the solution concurrently
+// (Promise.all), and two concurrent runPython calls sharing one mutable
+// global namespace can have the second call's globals.set() overwrite the
+// first call's arguments before they're read — silently grading the
+// learner's code as if it were the solution. Passing arguments as plain
+// function-call parameters gives each invocation its own local scope,
+// which is what call arguments are for.
+let runCellFn: ((code: string, checkVar: string, datasetsJson: string) => string) | null = null
 
 /** Kicks off loading Pyodide without waiting for it. The Data Analytics page
  * calls this on mount so the ~30MB of packages are already downloading by
@@ -139,6 +151,7 @@ function loadEngine(): Promise<PyodideInterface> {
         pyodide.FS.writeFile(path, content)
       }
       await pyodide.runPythonAsync(SETUP_CODE)
+      runCellFn = pyodide.globals.get('__run_cell')
       return pyodide
     })()
   }
@@ -150,17 +163,16 @@ function loadEngine(): Promise<PyodideInterface> {
  * `checkVar` names the variable the exercise grades; `datasets` pre-loads
  * CSVs into named DataFrames before the code runs, the same way SQL
  * Practice questions get their tables pre-loaded rather than asking the
- * learner to CREATE TABLE first. */
+ * learner to CREATE TABLE first. Safe to call concurrently (see runCellFn
+ * comment above) — each call passes its own arguments directly. */
 export async function runPython(
   code: string,
   options: { checkVar?: string; datasets?: DatasetBinding[] } = {},
 ): Promise<PythonRunResult> {
-  const pyodide = await loadEngine()
-  pyodide.globals.set('__code', code)
-  pyodide.globals.set('__check_var', options.checkVar ?? '')
-  pyodide.globals.set('__datasets_json', JSON.stringify(options.datasets ?? []))
-  const resultJson = (await pyodide.runPythonAsync(
-    '__run_cell(__code, __check_var, __datasets_json)',
-  )) as string
+  await loadEngine()
+  if (!runCellFn) {
+    throw new Error('Python engine failed to initialize')
+  }
+  const resultJson = runCellFn(code, options.checkVar ?? '', JSON.stringify(options.datasets ?? []))
   return JSON.parse(resultJson) as PythonRunResult
 }

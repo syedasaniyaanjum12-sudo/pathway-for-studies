@@ -104,3 +104,12 @@ Submissions are an append-only attempt log (one row per "Run", not just the late
 | 5 | Auth (JWT register/login) + progress tracking (submissions, project status) across all 3 tracks | ✅ Done |
 | 6 | Optional "real backend" modes for Interview/advanced exercises | Not started |
 | 7 | Search/filter, polish, deploy | Not started |
+
+## Bugs found by actually running the app in a browser
+
+Everything above was verified by direct API calls, Node-based logic checks, or `npm run build`/`tsc` — none of which exercise a real browser. Driving the app end-to-end with Playwright (see below) surfaced two real bugs that all of that verification had missed:
+
+1. **sql.js WASM 404 in the browser (Phase 1).** `client/public/` had `sql-wasm.wasm` (the `main`-field build's file), but Vite resolves sql.js's package.json `browser` field, which loads `sql-wasm-browser.js` — that file requests `sql-wasm-browser.wasm` instead. The mismatch was invisible because the Phase 1 verification scripts ran sql.js directly under Node, which ignores the `browser` field entirely. Fixed by copying the correct (byte-identical, just differently-named) file.
+2. **Data Analytics grading race condition (Phase 3).** `runPython()` passed the code/checkVar/datasets to Python via `pyodide.globals.set()` on the one shared Pyodide interpreter, then read them back inside an `eval`'d string. `DataAnalytics.tsx` grades a submission by running the learner's code and the solution *concurrently* (`Promise.all`) — so the second call's `globals.set()` could overwrite the first call's arguments before they were read, causing the learner's code to be silently graded as the solution (always "Correct!", displaying the solution's output). This could only surface under real concurrent execution — a sequential Node script, however faithful, can't reproduce it. Fixed by fetching the Python-side grading function once and calling it directly with arguments (each call gets its own local Python scope) instead of routing arguments through shared global state.
+
+Takeaway kept for future phases: logic verification (Node scripts, direct API calls) and actually running the app are different kinds of evidence — one catches wrong logic, the other catches wrong wiring and concurrency. Both are worth doing, and neither substitutes for the other.
