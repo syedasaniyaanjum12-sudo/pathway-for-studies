@@ -83,7 +83,7 @@ UserProjectStatus       (id, userId, projectId, status[not-started|in-progress|d
 | Phase | Deliverable | Status |
 |---|---|---|
 | 0 | Scaffold, tooling, routed empty pages | ✅ Done |
-| 1 | SQL Practice MVP (≥20 questions, sql.js, seeded datasets) | Not started |
+| 1 | SQL Practice MVP (≥20 questions, sql.js, seeded datasets) | ✅ Done |
 | 2 | AI Projects MVP (static cards, 4 levels) | Not started |
 | 3 | Data Analytics MVP (Pyodide, NumPy/Pandas/EDA/Matplotlib exercises) | Not started |
 | 4 | Backend: Express + Prisma + Postgres, migrate static content into DB | Not started |

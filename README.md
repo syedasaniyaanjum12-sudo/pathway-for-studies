@@ -20,4 +20,4 @@ Then open the printed local URL (typically http://localhost:5173).
 
 ## Status
 
-**Phase 0 complete** — repo scaffold, routing shell, and placeholder pages for all three tracks.
+**Phase 1 complete** — SQL Practice is functional: 24 questions (Easy/Medium/Hard/Interview) across joins, CASE WHEN, string/date functions, window functions, views, indexes, and subqueries, running entirely in-browser via sql.js against a seeded sample database. Data Analytics and AI Engineer Projects are still placeholders (Phases 2–3).
