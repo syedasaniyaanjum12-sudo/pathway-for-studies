@@ -1,0 +1,11 @@
+employee_id,first_name,last_name,email,department_id,manager_id,salary,hire_date
+1,Asha,Rao,asha.rao@company.com,1,,185000,2018-01-10
+2,Vikram,Shah,vikram.shah@company.com,1,1,142000,2019-04-22
+3,Neha,Kapoor,neha.kapoor@company.com,1,1,138000,2020-07-01
+4,Rohit,Mehta,rohit.mehta@company.com,2,,120000,2017-11-05
+5,Priya,Nair,priya.nair@company.com,2,4,98000,2021-02-14
+6,Arjun,Iyer,arjun.iyer@company.com,2,4,95000,2022-06-19
+7,Kavya,Menon,kavya.menon@company.com,3,,110000,2019-09-30
+8,Sanjay,Gupta,sanjay.gupta@company.com,3,7,88000,2022-01-11
+9,Meera,Joshi,meera.joshi@company.com,4,,105000,2016-03-08
+10,Divya,Reddy,divya.reddy@company.com,4,9,76000,2023-05-01

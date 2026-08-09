@@ -1,4 +1,6 @@
-export type SqlDifficulty = 'Easy' | 'Medium' | 'Hard' | 'Interview'
+import type { Difficulty } from '../types/difficulty'
+
+export type SqlDifficulty = Difficulty
 
 export interface SqlQuestion {
   id: string

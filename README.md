@@ -20,4 +20,9 @@ Then open the printed local URL (typically http://localhost:5173).
 
 ## Status
 
-**Phase 2 complete** — SQL Practice (24 questions, sql.js) and AI Engineer Projects (20 projects across Beginner/Intermediate/Advanced/Portfolio, with a shared `Badge` component reused for both difficulty and level tags) are both functional. Data Analytics is still a placeholder (Phase 3).
+**Phase 3 complete** — all three tracks are functional:
+- SQL Practice: 24 questions, sql.js
+- AI Engineer Projects: 20 projects across 4 levels
+- Data Analytics: 19 exercises (NumPy/Pandas/Data Cleaning/Missing Values/EDA/Matplotlib), running in-browser via Pyodide
+
+No backend yet — everything runs client-side against static data (Phase 4 introduces the API + database).

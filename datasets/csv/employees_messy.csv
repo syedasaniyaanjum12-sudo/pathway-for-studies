@@ -1,0 +1,12 @@
+employee_id,first_name,last_name,department,salary,hire_date
+1,Asha,Rao,Engineering,185000,2018-01-10
+2, Vikram ,Shah,engineering,142000,2019-04-22
+3,Neha,Kapoor,Engineering,,2020-07-01
+4,Rohit,Mehta,Sales,120000,2017-11-05
+5,Priya,Nair,Sales,98000,2021-02-14
+6,Arjun,Iyer,SALES,95000,2022-06-19
+7,Kavya,Menon,Marketing,,2019-09-30
+8,Sanjay,Gupta,Marketing,88000,2022-01-11
+9,Meera,Joshi,Human Resources,105000,2016-03-08
+9,Meera,Joshi,Human Resources,105000,2016-03-08
+10,Divya,Reddy,Human Resources,76000,2023-05-01

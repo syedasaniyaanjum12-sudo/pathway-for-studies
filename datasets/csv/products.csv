@@ -1,0 +1,10 @@
+product_id,product_name,category,price,stock_quantity
+1,Wireless Mouse,Electronics,25.99,200
+2,Mechanical Keyboard,Electronics,79.99,120
+3,USB-C Hub,Electronics,34.5,150
+4,Office Chair,Furniture,199,40
+5,Standing Desk,Furniture,349,25
+6,Notebook Set,Stationery,9.99,500
+7,Desk Lamp,Furniture,45,80
+8,Webcam 1080p,Electronics,59.99,90
+9,Bluetooth Speaker,Electronics,49.99,60

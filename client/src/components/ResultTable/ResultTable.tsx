@@ -1,8 +1,12 @@
-import type { QueryResult } from '../../lib/sqlEngine'
+export interface TabularResult {
+  columns: string[]
+  rows: unknown[][]
+}
 
-// Renders a query result as a plain table. Deliberately generic (just
-// columns + rows) so it isn't coupled to the SQL engine's types beyond that.
-function ResultTable({ columns, rows }: QueryResult) {
+// Renders any (columns, rows) pair as a plain table. Used for raw SQL
+// results and, via PythonResultView, for pandas DataFrames/Series too — a
+// table is a table regardless of which engine produced it.
+function ResultTable({ columns, rows }: TabularResult) {
   if (rows.length === 0) {
     return <p className="text-sm text-slate-500">Query ran successfully — 0 rows returned.</p>
   }
