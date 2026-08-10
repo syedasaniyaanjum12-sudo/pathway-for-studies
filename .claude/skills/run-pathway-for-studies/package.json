@@ -1,0 +1,10 @@
+{
+  "name": "run-pathway-for-studies-driver",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Playwright driver for the run-pathway-for-studies skill. Not part of the app itself.",
+  "type": "commonjs",
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
+}
