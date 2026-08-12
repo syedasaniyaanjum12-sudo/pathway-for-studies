@@ -156,6 +156,21 @@ async function main() {
   }
   console.log('OK  SQL Interview-tier: server overrides a dishonest correct-report to incorrect')
 
+  // --- Phase 7: search narrows the list, and shows an empty state (with a
+  // working "Clear filters") when nothing matches. ---
+  await page.fill('input[type="search"]', 'window')
+  await page.waitForTimeout(200)
+  const windowMatches = await page.locator('aside li').count()
+  if (windowMatches === 0) throw new Error('REGRESSION: search for "window" matched 0 SQL questions')
+  console.log(`OK  SQL search: "window" matched ${windowMatches} question(s)`)
+
+  await page.fill('input[type="search"]', 'zzzznonexistent')
+  await page.waitForSelector('text=No questions match your search/filter.', { timeout: 5000 })
+  await shot('07-sql-search-empty-state.png')
+  await page.click('text=Clear filters')
+  await page.waitForSelector('text=No questions match your search/filter.', { state: 'detached' })
+  console.log('OK  SQL search: empty state shows for no matches, Clear filters recovers')
+
   await browser.close()
 
   console.log(`\n${errors.length} browser console error(s)`)

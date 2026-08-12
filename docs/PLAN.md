@@ -12,7 +12,7 @@ This records the plan agreed on before implementation started, so decisions aren
 | SQL engine | sql.js (SQLite via WebAssembly) | Runs real SQL entirely client-side — safe by default, no backend needed for grading. |
 | Python engine | Pyodide (Python + NumPy/Pandas/Matplotlib via WebAssembly) | Same client-side-safe pattern as sql.js, for the Data Analytics track. |
 | Backend | Node.js + Express + TypeScript | Same language as the frontend; added in Phase 4. |
-| App database | PostgreSQL + Prisma ORM | Type-safe schema/queries; dev can start on SQLite via Prisma and swap datasource later. |
+| App database | PostgreSQL + Prisma ORM | Type-safe schema/queries; dev starts on SQLite via Prisma, switching to Postgres for deploy (see `docs/DEPLOY.md` for the actual procedure — not just a one-line config change). |
 | Auth | JWT-based email/password | Simple, no third-party dependency to start. |
 | Hosting | Frontend: Vercel/Netlify · Backend+DB: Render/Railway | Free tiers, minimal DevOps overhead. |
 
@@ -34,6 +34,8 @@ Express API  ──────────────  SQLite dev / PostgreSQL
 Phases 1-3 ran without a backend at all (static JSON data), so the UI worked before databases entered the picture. Phase 4 moved that content into a real database and added the API in between — grading itself is unchanged (still sql.js/Pyodide in the browser), since the API only serves question/exercise/project content, not query execution. Phase 5 added JWT auth on top: the client holds a token (localStorage) and attaches it as `Authorization: Bearer <token>` to the handful of routes that need to know who's asking (recording a submission, setting a project status, reading `/api/me/progress`) — everything else stays public/read-only.
 
 Phase 6 added a second, *server-side* grading path, used only for Interview-tier questions/exercises: the server independently re-runs the submission (sql.js on the server for SQL, a sandboxed Python interpreter for Data Analytics) instead of just trusting the client's self-reported `isCorrect`. See "Trust boundary" below for exactly what this does and doesn't guarantee.
+
+Phase 7 didn't touch the architecture — it added text search alongside the existing difficulty/level filters on all three track pages (client-side `.filter()` over already-fetched data; no new endpoints, since the content lists are small enough that fetching everything up front and filtering in memory is simpler than paginated/server-side search), an empty state for "search+filter matched nothing," a progress summary on the Home page, and made the app deploy-ready: `CORS_ORIGIN` (server) and `VITE_API_BASE_URL` (client) exist specifically so the client and server can live on different origins in production, which they can't in dev (same-origin via Vite's proxy). See `docs/DEPLOY.md` for the actual deploy procedure — not run by an agent, since it requires your own hosting accounts.
 
 ## Folder Structure
 
@@ -81,13 +83,15 @@ pathway-for-studies/
 │   └── data/                       # sqlQuestions.ts, dataAnalyticsExercises.ts, aiProjects.ts — human-edited source of new content
 ├── datasets/                       # seed .sql / .csv files: Employees, Departments, Customers, Orders, Products, Sales
 └── docs/
+    ├── PLAN.md                      # this file
+    └── DEPLOY.md                    # Phase 7: step-by-step Vercel + Render deployment
 ```
 
 ## Database Plan
 
 **Practice datasets** (the subject of exercises) — plain seed files for Employees, Departments, Customers, Orders, Products, Sales, loaded client-side per exercise.
 
-**App database** (SQLite for dev, Postgres for prod — same Prisma schema either way, just a different `datasource` provider + `DATABASE_URL`):
+**App database** (SQLite for dev, Postgres for prod — same `schema.prisma` model definitions either way, just a different `datasource` provider + `DATABASE_URL`). The `provider` line itself is one-line, but don't stop there: Prisma migration files are provider-specific SQL, and `prisma/migrations/migration_lock.toml` records which one generated them — switching providers means regenerating migration history from scratch, not just editing the schema. See `docs/DEPLOY.md` (Phase 7) for the exact procedure, checked against this repo's actual `migration_lock.toml` rather than assumed.
 
 ```
 SqlQuestion               (id, title, difficulty, topic, prompt, solutionQuery, orderMatters, hint)
@@ -124,7 +128,7 @@ A `SubmissionResult` response (`{id, isCorrect, gradedBy, serverNote?}`) tells t
 | 4 | Backend: Express + Prisma + SQLite, migrate static content into DB, client fetches via API | ✅ Done |
 | 5 | Auth (JWT register/login) + progress tracking (submissions, project status) across all 3 tracks | ✅ Done |
 | 6 | Server-side re-grading for Interview-tier questions/exercises (sql.js + RestrictedPython sandbox) | ✅ Done |
-| 7 | Search/filter, polish, deploy | Not started |
+| 7 | Search/filter, polish, deploy-readiness (see `docs/DEPLOY.md`) | ✅ Done |
 
 ## Bugs found by actually running the app in a browser
 

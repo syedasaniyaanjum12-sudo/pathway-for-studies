@@ -3,6 +3,8 @@ import type { AiProject, ProjectLevel, ProjectStatus } from '../../../../shared/
 import { fetchAiProjects, fetchProgress, setProjectStatus } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import ProjectCard from '../../components/ProjectCard/ProjectCard'
+import SearchInput from '../../components/SearchInput/SearchInput'
+import EmptyState from '../../components/EmptyState/EmptyState'
 
 const LEVEL_FILTERS: Array<ProjectLevel | 'All'> = [
   'All',
@@ -17,6 +19,7 @@ function AiProjects() {
   const [projects, setProjects] = useState<AiProject[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [levelFilter, setLevelFilter] = useState<ProjectLevel | 'All'>('All')
+  const [search, setSearch] = useState('')
   const [statuses, setStatuses] = useState<Record<string, ProjectStatus>>({})
 
   useEffect(() => {
@@ -39,8 +42,22 @@ function AiProjects() {
 
   const visibleProjects = useMemo(() => {
     if (!projects) return []
-    return levelFilter === 'All' ? projects : projects.filter((p) => p.level === levelFilter)
-  }, [projects, levelFilter])
+    const byLevel = levelFilter === 'All' ? projects : projects.filter((p) => p.level === levelFilter)
+    const term = search.trim().toLowerCase()
+    if (!term) return byLevel
+    return byLevel.filter(
+      (p) =>
+        p.title.toLowerCase().includes(term) ||
+        p.description.toLowerCase().includes(term) ||
+        p.techStack.some((tech) => tech.toLowerCase().includes(term)) ||
+        p.skills.some((skill) => skill.toLowerCase().includes(term)),
+    )
+  }, [projects, levelFilter, search])
+
+  function clearFilters() {
+    setLevelFilter('All')
+    setSearch('')
+  }
 
   function handleStatusChange(projectId: string, status: ProjectStatus) {
     // Optimistic update, same pattern as the SQL/Data Analytics solved
@@ -77,6 +94,10 @@ function AiProjects() {
         </p>
       )}
 
+      <div className="mt-4 max-w-sm">
+        <SearchInput value={search} onChange={setSearch} placeholder="Search projects, tech, skills…" />
+      </div>
+
       <div className="mt-4 flex flex-wrap gap-2">
         {LEVEL_FILTERS.map((level) => (
           <button
@@ -94,16 +115,22 @@ function AiProjects() {
         ))}
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {visibleProjects.map((project) => (
-          <ProjectCard
-            key={project.id}
-            project={project}
-            status={statuses[project.id]}
-            onStatusChange={user ? (status) => handleStatusChange(project.id, status) : undefined}
-          />
-        ))}
-      </div>
+      {visibleProjects.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState message="No projects match your search/filter." onClear={clearFilters} />
+        </div>
+      ) : (
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {visibleProjects.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              status={statuses[project.id]}
+              onStatusChange={user ? (status) => handleStatusChange(project.id, status) : undefined}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

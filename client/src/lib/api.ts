@@ -10,9 +10,18 @@ import type {
 } from '../../../shared/types'
 import { getToken } from './authStorage'
 
-// Every request goes through /api/..., proxied by Vite (see vite.config.ts)
-// to the Express server in dev, and by the same reverse proxy in production
-// (Phase 6+) — so this file never needs an absolute host/port.
+// In dev, requests go through /api/..., proxied by Vite (see
+// vite.config.ts) to the Express server — VITE_API_BASE_URL is unset, so
+// this resolves to '' and paths stay relative. A split production
+// deployment (client on Vercel, server on Render — see docs/DEPLOY.md) has
+// no such proxy, since the two are on different origins; setting
+// VITE_API_BASE_URL to the deployed API's URL at build time is what makes
+// the same relative-path code work there too. Read directly from
+// import.meta.env (not layered behind a helper) since Vite only
+// statically replaces exact `import.meta.env.VITE_*` expressions at build
+// time — wrapping it in a function would prevent that replacement.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+
 async function request<T>(
   path: string,
   options: { method?: string; body?: unknown; auth?: boolean } = {},
@@ -24,7 +33,7 @@ async function request<T>(
     if (token) headers.Authorization = `Bearer ${token}`
   }
 
-  const response = await fetch(path, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? 'GET',
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,

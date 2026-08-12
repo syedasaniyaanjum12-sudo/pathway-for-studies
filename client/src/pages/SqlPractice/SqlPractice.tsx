@@ -9,6 +9,8 @@ import CodeEditor from '../../components/CodeEditor/CodeEditor'
 import ResultTable from '../../components/ResultTable/ResultTable'
 import SolvedMark from '../../components/SolvedMark/SolvedMark'
 import VerificationNote from '../../components/VerificationNote/VerificationNote'
+import SearchInput from '../../components/SearchInput/SearchInput'
+import EmptyState from '../../components/EmptyState/EmptyState'
 import SchemaReference from './SchemaReference'
 
 const DIFFICULTY_FILTERS: Array<Difficulty | 'All'> = ['All', 'Easy', 'Medium', 'Hard', 'Interview']
@@ -25,6 +27,7 @@ function SqlPractice() {
   const [questions, setQuestions] = useState<SqlQuestion[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | 'All'>('All')
+  const [search, setSearch] = useState('')
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [showHint, setShowHint] = useState(false)
@@ -56,10 +59,22 @@ function SqlPractice() {
 
   const visibleQuestions = useMemo(() => {
     if (!questions) return []
-    return difficultyFilter === 'All'
-      ? questions
-      : questions.filter((q) => q.difficulty === difficultyFilter)
-  }, [questions, difficultyFilter])
+    const byDifficulty =
+      difficultyFilter === 'All' ? questions : questions.filter((q) => q.difficulty === difficultyFilter)
+    const term = search.trim().toLowerCase()
+    if (!term) return byDifficulty
+    return byDifficulty.filter(
+      (q) =>
+        q.title.toLowerCase().includes(term) ||
+        q.topic.toLowerCase().includes(term) ||
+        q.prompt.toLowerCase().includes(term),
+    )
+  }, [questions, difficultyFilter, search])
+
+  function clearFilters() {
+    setDifficultyFilter('All')
+    setSearch('')
+  }
 
   const selectedQuestion = questions?.find((q) => q.id === selectedQuestionId) ?? null
 
@@ -142,6 +157,9 @@ function SqlPractice() {
   return (
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
       <aside>
+        <div className="mb-3">
+          <SearchInput value={search} onChange={setSearch} placeholder="Search questions…" />
+        </div>
         <div className="mb-3 flex flex-wrap gap-2">
           {DIFFICULTY_FILTERS.map((difficulty) => (
             <button
@@ -158,30 +176,34 @@ function SqlPractice() {
             </button>
           ))}
         </div>
-        <ul className="space-y-1">
-          {visibleQuestions.map((question) => (
-            <li key={question.id}>
-              <button
-                type="button"
-                onClick={() => selectQuestion(question)}
-                className={`w-full rounded-md border px-3 py-2 text-left text-sm ${
-                  question.id === selectedQuestion.id
-                    ? 'border-indigo-300 bg-indigo-50'
-                    : 'border-transparent hover:bg-slate-100'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5 font-medium text-slate-800">
-                    {solvedIds.has(question.id) && <SolvedMark />}
-                    {question.title}
-                  </span>
-                  <DifficultyBadge difficulty={question.difficulty} />
-                </div>
-                <span className="text-xs text-slate-500">{question.topic}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        {visibleQuestions.length === 0 ? (
+          <EmptyState message="No questions match your search/filter." onClear={clearFilters} />
+        ) : (
+          <ul className="space-y-1">
+            {visibleQuestions.map((question) => (
+              <li key={question.id}>
+                <button
+                  type="button"
+                  onClick={() => selectQuestion(question)}
+                  className={`w-full rounded-md border px-3 py-2 text-left text-sm ${
+                    question.id === selectedQuestion.id
+                      ? 'border-indigo-300 bg-indigo-50'
+                      : 'border-transparent hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5 font-medium text-slate-800">
+                      {solvedIds.has(question.id) && <SolvedMark />}
+                      {question.title}
+                    </span>
+                    <DifficultyBadge difficulty={question.difficulty} />
+                  </div>
+                  <span className="text-xs text-slate-500">{question.topic}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </aside>
 
       <section>

@@ -9,11 +9,16 @@ import { progressRouter } from './routes/progress.js'
 const app = express()
 const port = Number(process.env.PORT) || 4000
 
-// Permissive CORS stays fine even with auth in the picture: sessions are
-// Bearer tokens in an Authorization header, not cookies, so a cross-origin
-// page can't silently ride a logged-in user's session the way it could with
-// cookie auth — it would need the token itself, which CORS doesn't leak.
-app.use(cors())
+// Permissive CORS (the default, when CORS_ORIGIN is unset) is fine even
+// with auth in the picture: sessions are Bearer tokens in an Authorization
+// header, not cookies, so a cross-origin page can't silently ride a
+// logged-in user's session the way it could with cookie auth — it would
+// need the token itself, which CORS doesn't leak. For a real deployment
+// (Phase 7), set CORS_ORIGIN to the deployed client's exact origin anyway —
+// defense in depth costs nothing here, and it's one env var away. Accepts a
+// comma-separated list for the (uncommon) case of multiple client origins.
+const corsOrigin = process.env.CORS_ORIGIN
+app.use(cors(corsOrigin ? { origin: corsOrigin.split(',').map((o) => o.trim()) } : undefined))
 app.use(express.json())
 
 app.get('/api/health', (_req, res) => {

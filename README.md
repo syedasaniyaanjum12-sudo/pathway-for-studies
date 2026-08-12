@@ -8,7 +8,7 @@ A learning platform with three tracks:
 
 Content (questions/exercises/projects) is served by a small Express + Prisma API. Grading happens client-side (sql.js/Pyodide) for Easy/Medium/Hard; for Interview-tier questions, the server *also* independently re-runs and grades your submission (see "Server-side re-grading" below), so a right answer means the server checked it, not just your own browser. Signing in (email/password) saves your progress — solved questions/exercises and project status — across sessions.
 
-See [`docs/PLAN.md`](docs/PLAN.md) for the full architecture, tech stack, folder structure, and phased build-out plan.
+See [`docs/PLAN.md`](docs/PLAN.md) for the full architecture, tech stack, folder structure, and phased build-out plan, and [`docs/DEPLOY.md`](docs/DEPLOY.md) for deploying to Vercel + Render.
 
 ## Development
 
@@ -39,12 +39,13 @@ For Interview-difficulty questions/exercises, the server independently re-runs y
 
 ## Status
 
-**Phase 6 complete** — all three tracks are functional, backed by a real database, with accounts, progress tracking, and server-side re-grading for Interview-tier work:
-- SQL Practice: 24 questions, sql.js
-- AI Engineer Projects: 20 projects across 4 levels
-- Data Analytics: 19 exercises (NumPy/Pandas/Data Cleaning/Missing Values/EDA/Matplotlib), running in-browser via Pyodide
+**Phase 7 complete** — feature-complete and deploy-ready:
+- SQL Practice: 24 questions, sql.js, with search + difficulty filter
+- AI Engineer Projects: 20 projects across 4 levels, with search + level filter
+- Data Analytics: 19 exercises (NumPy/Pandas/Data Cleaning/Missing Values/EDA/Matplotlib), running in-browser via Pyodide, with search + difficulty filter
 - Backend: Express + Prisma (SQLite for dev), serving all three content types over `/api/*`
-- Auth: email/password with JWTs (`/api/auth/register`, `/login`, `/me`); signed-in users get solved-question checkmarks and can track AI project status (not-started/in-progress/done)
+- Auth: email/password with JWTs; signed-in users get solved-question checkmarks, AI project status tracking, and a progress summary on the Home page
 - Server-side re-grading: Interview-tier submissions are independently re-checked server-side, not just self-reported by the browser (see above)
+- Deploy-ready: `CORS_ORIGIN` / `VITE_API_BASE_URL` support a split production deployment (client + server on different origins) — see [`docs/DEPLOY.md`](docs/DEPLOY.md) for the actual Vercel + Render steps
 
-Next up (Phase 7): search/filter, polish, deploy.
+Not yet deployed live — that needs your own hosting accounts, see `docs/DEPLOY.md`.

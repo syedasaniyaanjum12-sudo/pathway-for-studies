@@ -10,6 +10,8 @@ import CodeEditor from '../../components/CodeEditor/CodeEditor'
 import PythonResultView from '../../components/PythonResultView/PythonResultView'
 import SolvedMark from '../../components/SolvedMark/SolvedMark'
 import VerificationNote from '../../components/VerificationNote/VerificationNote'
+import SearchInput from '../../components/SearchInput/SearchInput'
+import EmptyState from '../../components/EmptyState/EmptyState'
 import DatasetReference from './DatasetReference'
 
 const DIFFICULTY_FILTERS: Array<Difficulty | 'All'> = ['All', 'Easy', 'Medium', 'Hard', 'Interview']
@@ -26,6 +28,7 @@ function DataAnalytics() {
   const [exercises, setExercises] = useState<DataAnalyticsExercise[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | 'All'>('All')
+  const [search, setSearch] = useState('')
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [showHint, setShowHint] = useState(false)
@@ -61,10 +64,22 @@ function DataAnalytics() {
 
   const visibleExercises = useMemo(() => {
     if (!exercises) return []
-    return difficultyFilter === 'All'
-      ? exercises
-      : exercises.filter((ex) => ex.difficulty === difficultyFilter)
-  }, [exercises, difficultyFilter])
+    const byDifficulty =
+      difficultyFilter === 'All' ? exercises : exercises.filter((ex) => ex.difficulty === difficultyFilter)
+    const term = search.trim().toLowerCase()
+    if (!term) return byDifficulty
+    return byDifficulty.filter(
+      (ex) =>
+        ex.title.toLowerCase().includes(term) ||
+        ex.topic.toLowerCase().includes(term) ||
+        ex.prompt.toLowerCase().includes(term),
+    )
+  }, [exercises, difficultyFilter, search])
+
+  function clearFilters() {
+    setDifficultyFilter('All')
+    setSearch('')
+  }
 
   const selectedExercise = exercises?.find((ex) => ex.id === selectedExerciseId) ?? null
 
@@ -143,6 +158,9 @@ function DataAnalytics() {
   return (
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
       <aside>
+        <div className="mb-3">
+          <SearchInput value={search} onChange={setSearch} placeholder="Search exercises…" />
+        </div>
         <div className="mb-3 flex flex-wrap gap-2">
           {DIFFICULTY_FILTERS.map((difficulty) => (
             <button
@@ -159,30 +177,34 @@ function DataAnalytics() {
             </button>
           ))}
         </div>
-        <ul className="space-y-1">
-          {visibleExercises.map((exercise) => (
-            <li key={exercise.id}>
-              <button
-                type="button"
-                onClick={() => selectExercise(exercise)}
-                className={`w-full rounded-md border px-3 py-2 text-left text-sm ${
-                  exercise.id === selectedExercise.id
-                    ? 'border-indigo-300 bg-indigo-50'
-                    : 'border-transparent hover:bg-slate-100'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5 font-medium text-slate-800">
-                    {solvedIds.has(exercise.id) && <SolvedMark />}
-                    {exercise.title}
-                  </span>
-                  <DifficultyBadge difficulty={exercise.difficulty} />
-                </div>
-                <span className="text-xs text-slate-500">{exercise.topic}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        {visibleExercises.length === 0 ? (
+          <EmptyState message="No exercises match your search/filter." onClear={clearFilters} />
+        ) : (
+          <ul className="space-y-1">
+            {visibleExercises.map((exercise) => (
+              <li key={exercise.id}>
+                <button
+                  type="button"
+                  onClick={() => selectExercise(exercise)}
+                  className={`w-full rounded-md border px-3 py-2 text-left text-sm ${
+                    exercise.id === selectedExercise.id
+                      ? 'border-indigo-300 bg-indigo-50'
+                      : 'border-transparent hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5 font-medium text-slate-800">
+                      {solvedIds.has(exercise.id) && <SolvedMark />}
+                      {exercise.title}
+                    </span>
+                    <DifficultyBadge difficulty={exercise.difficulty} />
+                  </div>
+                  <span className="text-xs text-slate-500">{exercise.topic}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </aside>
 
       <section>

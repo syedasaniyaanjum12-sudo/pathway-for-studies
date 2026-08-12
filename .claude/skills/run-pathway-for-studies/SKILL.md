@@ -48,7 +48,7 @@ cd .claude/skills/run-pathway-for-studies
 node driver.cjs
 ```
 
-The driver registers a throwaway user, then exercises one representative flow per track: SQL Practice (wrong query → correct query, sql.js grading), sign-up + progress persistence (solve a question, reload, confirm the checkmark survived — proves it round-tripped through the database, not just local state), AI Projects (set a status), Data Analytics (wrong code → correct code, Pyodide grading), and Phase 6's server-side re-grading for Interview-tier questions (a correct answer through the real UI shows the "Server-verified" badge; a raw `fetch()` call from the page context — the real UI can't lie about its own grading, so this is the only way to actually exercise the check — confirms the server overrides a dishonest `isCorrect: true` self-report to `false`). It exits 0 with `N browser console error(s)` printed (should be 0), or exits 1 and prints `DRIVER FAILED` with the Playwright error (or `REGRESSION: ...` for the Phase 6 trust-boundary check specifically) on any assertion/timeout failure.
+The driver registers a throwaway user, then exercises one representative flow per track: SQL Practice (wrong query → correct query, sql.js grading), sign-up + progress persistence (solve a question, reload, confirm the checkmark survived — proves it round-tripped through the database, not just local state), AI Projects (set a status), Data Analytics (wrong code → correct code, Pyodide grading), Phase 6's server-side re-grading for Interview-tier questions (a correct answer through the real UI shows the "Server-verified" badge; a raw `fetch()` call from the page context — the real UI can't lie about its own grading, so this is the only way to actually exercise the check — confirms the server overrides a dishonest `isCorrect: true` self-report to `false`), and Phase 7's search (narrows the SQL question list, then an empty state with a working "Clear filters" appears for a search matching nothing). It exits 0 with `N browser console error(s)` printed (should be 0), or exits 1 and prints `DRIVER FAILED` with the Playwright error (or `REGRESSION: ...` for the Phase 6 trust-boundary check specifically) on any assertion/timeout failure.
 
 Screenshots land in `.claude/skills/run-pathway-for-studies/screenshots/` (gitignored — regenerated each run):
 
@@ -60,6 +60,7 @@ Screenshots land in `.claude/skills/run-pathway-for-studies/screenshots/` (gitig
 | `04-ai-project-status.png` | AI Projects, a project's status dropdown set to "in-progress" |
 | `05-python-correct.png` | Data Analytics, correct Python code graded ✅ |
 | `06-sql-interview-verified.png` | SQL Practice, an Interview-tier question showing the "🔒 Server-verified" badge |
+| `07-sql-search-empty-state.png` | SQL Practice, the empty state shown when a search matches no questions |
 
 Stop the servers when done:
 
