@@ -116,6 +116,46 @@ async function main() {
   await shot('05-python-correct.png')
   console.log('OK  Data Analytics: correct code graded correct')
 
+  // --- Phase 6: Interview-tier questions get independently re-graded
+  // server-side, not just trusted from the client's self-report. First,
+  // the honest path through the real UI: ---
+  await page.click('a:has-text("SQL Practice")')
+  await page.waitForSelector('text=Run Query')
+  await page.click('button:has-text("Interview")')
+  await page.click('text=Top 3 customers by spend')
+  await page.click('.cm-content')
+  await page.keyboard.type(
+    'SELECT o.customer_id, SUM(s.quantity * s.unit_price) AS total_spent FROM orders o JOIN sales s ON o.order_id = s.order_id GROUP BY o.customer_id ORDER BY total_spent DESC LIMIT 3;',
+  )
+  await page.click('button:has-text("Run Query")')
+  await page.waitForSelector('text=Correct!', { timeout: 15000 })
+  await page.waitForSelector('text=Server-verified', { timeout: 10000 })
+  await shot('06-sql-interview-verified.png')
+  console.log('OK  SQL Interview-tier: correct answer shows the Server-verified badge')
+
+  // Then the actual security-relevant check: a real UI can't lie about its
+  // own grading (it always self-reports honestly), so hitting the API
+  // directly is how you exercise "does the server actually re-check this,
+  // or does it just believe whatever isCorrect the client sends" — the
+  // exact trust-boundary gap Phase 6 closed for Interview-tier questions
+  // (see docs/PLAN.md). Reuses the already-signed-in session's token.
+  const dishonestResult = await page.evaluate(async () => {
+    const token = localStorage.getItem('pathway.authToken')
+    const res = await fetch('/api/sql-questions/top-customers-by-spend/submissions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ submittedQuery: 'SELECT 1;', isCorrect: true }), // lying: SELECT 1; is not the answer
+    })
+    return res.json()
+  })
+  if (dishonestResult.gradedBy !== 'server' || dishonestResult.isCorrect !== false) {
+    throw new Error(
+      'REGRESSION: server did not catch a dishonest isCorrect:true on an Interview-tier question — got ' +
+        JSON.stringify(dishonestResult),
+    )
+  }
+  console.log('OK  SQL Interview-tier: server overrides a dishonest correct-report to incorrect')
+
   await browser.close()
 
   console.log(`\n${errors.length} browser console error(s)`)

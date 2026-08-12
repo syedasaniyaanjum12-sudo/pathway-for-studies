@@ -6,6 +6,7 @@ import type {
   AuthUser,
   ProgressSummary,
   ProjectStatus,
+  SubmissionResult,
 } from '../../../shared/types'
 import { getToken } from './authStorage'
 
@@ -68,11 +69,15 @@ export function fetchProgress(): Promise<ProgressSummary> {
   return request('/api/me/progress', { auth: true })
 }
 
+// Both submit functions return a SubmissionResult so the UI can tell
+// whether the server independently re-graded the attempt (gradedBy:
+// 'server', Interview-tier questions — Phase 6) or just recorded the
+// client's own grading result (gradedBy: 'client', everything else).
 export function submitSqlQuestion(
   questionId: string,
   submittedQuery: string,
   isCorrect: boolean,
-): Promise<void> {
+): Promise<SubmissionResult> {
   return request(`/api/sql-questions/${questionId}/submissions`, {
     method: 'POST',
     body: { submittedQuery, isCorrect },
@@ -84,7 +89,7 @@ export function submitDataAnalyticsExercise(
   exerciseId: string,
   submittedCode: string,
   isCorrect: boolean,
-): Promise<void> {
+): Promise<SubmissionResult> {
   return request(`/api/data-analytics-exercises/${exerciseId}/submissions`, {
     method: 'POST',
     body: { submittedCode, isCorrect },

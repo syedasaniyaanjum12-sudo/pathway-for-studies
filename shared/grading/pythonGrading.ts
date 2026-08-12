@@ -1,4 +1,10 @@
-/** Deep-equality check for the JSON-shaped values pythonEngine.ts produces
+// Shared by client (grading in-browser via Pyodide, all difficulties) and
+// server (re-grading Interview-tier submissions independently via the
+// RestrictedPython sandbox — see server/src/lib/pythonSandbox.ts). Keeping
+// this in one place means the two can never silently disagree about what
+// "correct" means.
+
+/** Deep-equality check for the JSON-shaped values the Python engines produce
  * (numbers, strings, arrays, and {__type__: 'dataframe'|'series', ...}
  * objects). Numbers are compared with a relative tolerance because pandas/
  * numpy float results (means, sums over floats) can differ in the last bit

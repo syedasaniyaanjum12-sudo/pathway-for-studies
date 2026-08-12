@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Difficulty, SqlQuestion } from '../../../../shared/types'
+import type { Difficulty, SqlQuestion, SubmissionResult } from '../../../../shared/types'
 import { fetchSqlQuestions, fetchProgress, submitSqlQuestion } from '../../lib/api'
 import { runQuery, type QueryResult } from '../../lib/sqlEngine'
-import { resultsMatch } from '../../lib/grading'
+import { resultsMatch } from '../../../../shared/grading/sqlGrading'
 import { useAuth } from '../../context/AuthContext'
 import DifficultyBadge from '../../components/DifficultyBadge/DifficultyBadge'
 import CodeEditor from '../../components/CodeEditor/CodeEditor'
 import ResultTable from '../../components/ResultTable/ResultTable'
 import SolvedMark from '../../components/SolvedMark/SolvedMark'
+import VerificationNote from '../../components/VerificationNote/VerificationNote'
 import SchemaReference from './SchemaReference'
 
 const DIFFICULTY_FILTERS: Array<Difficulty | 'All'> = ['All', 'Easy', 'Medium', 'Hard', 'Interview']
@@ -16,8 +17,8 @@ type Verdict =
   | { status: 'idle' }
   | { status: 'running' }
   | { status: 'error'; message: string }
-  | { status: 'correct'; result: QueryResult }
-  | { status: 'incorrect'; result: QueryResult }
+  | { status: 'correct'; result: QueryResult; verification?: SubmissionResult }
+  | { status: 'incorrect'; result: QueryResult; verification?: SubmissionResult }
 
 function SqlPractice() {
   const { user } = useAuth()
@@ -80,19 +81,45 @@ function SqlPractice() {
         runQuery(query),
         runQuery(selectedQuestion.solutionQuery),
       ])
-      const isCorrect = resultsMatch(actual, expected, Boolean(selectedQuestion.orderMatters))
-      setVerdict(isCorrect ? { status: 'correct', result: actual } : { status: 'incorrect', result: actual })
+      const clientIsCorrect = resultsMatch(actual, expected, Boolean(selectedQuestion.orderMatters))
+      setVerdict(
+        clientIsCorrect ? { status: 'correct', result: actual } : { status: 'incorrect', result: actual },
+      )
 
       if (user) {
-        if (isCorrect) {
+        if (clientIsCorrect) {
           // Optimistic update — the checkmark should appear immediately,
           // not after a round-trip that could fail or lag.
           setSolvedIds((prev) => new Set(prev).add(selectedQuestion.id))
         }
-        submitSqlQuestion(selectedQuestion.id, query, isCorrect).catch(() => {
+        try {
+          const submission = await submitSqlQuestion(selectedQuestion.id, query, clientIsCorrect)
+          // For Interview-tier questions, the server independently re-runs
+          // and grades the submission (Phase 6) — if its verdict disagrees
+          // with what was just computed client-side, the server's is
+          // authoritative. Reconcile the displayed result and checkmark to
+          // match rather than silently keeping the (wrong) client verdict.
+          if (submission.gradedBy === 'server' && submission.isCorrect !== clientIsCorrect) {
+            setVerdict({
+              status: submission.isCorrect ? 'correct' : 'incorrect',
+              result: actual,
+              verification: submission,
+            })
+            setSolvedIds((prev) => {
+              const next = new Set(prev)
+              if (submission.isCorrect) next.add(selectedQuestion.id)
+              else next.delete(selectedQuestion.id)
+              return next
+            })
+          } else {
+            setVerdict((prev) => (prev.status === 'idle' || prev.status === 'running' || prev.status === 'error'
+              ? prev
+              : { ...prev, verification: submission }))
+          }
+        } catch {
           // Best-effort logging of an attempt; losing one submission record
           // shouldn't block the learner from seeing their result.
-        })
+        }
       }
     } catch (err) {
       setVerdict({ status: 'error', message: err instanceof Error ? err.message : String(err) })
@@ -170,6 +197,11 @@ function SqlPractice() {
         </div>
 
         <p className="mt-4 text-slate-700">{selectedQuestion.prompt}</p>
+        {selectedQuestion.difficulty === 'Interview' && !user && (
+          <p className="mt-1 text-xs text-slate-400">
+            Sign in to get this Interview-tier question independently re-checked server-side.
+          </p>
+        )}
 
         <div className="mt-4">
           <CodeEditor value={query} onChange={setQuery} placeholder="-- write your query here" />
@@ -214,6 +246,9 @@ function SqlPractice() {
             <p className="mb-2 rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">
               ❌ Not quite — your query ran, but the result doesn't match yet.
             </p>
+          )}
+          {(verdict.status === 'correct' || verdict.status === 'incorrect') && verdict.verification && (
+            <VerificationNote verification={verdict.verification} />
           )}
           {(verdict.status === 'correct' || verdict.status === 'incorrect') && (
             <ResultTable columns={verdict.result.columns} rows={verdict.result.rows} />

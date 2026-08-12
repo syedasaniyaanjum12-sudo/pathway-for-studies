@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { python } from '@codemirror/lang-python'
-import type { DataAnalyticsExercise, Difficulty } from '../../../../shared/types'
+import type { DataAnalyticsExercise, Difficulty, SubmissionResult } from '../../../../shared/types'
 import { fetchDataAnalyticsExercises, fetchProgress, submitDataAnalyticsExercise } from '../../lib/api'
 import { runPython, warmUpEngine, type PythonRunResult } from '../../lib/pythonEngine'
-import { valuesMatch } from '../../lib/pythonGrading'
+import { valuesMatch } from '../../../../shared/grading/pythonGrading'
 import { useAuth } from '../../context/AuthContext'
 import DifficultyBadge from '../../components/DifficultyBadge/DifficultyBadge'
 import CodeEditor from '../../components/CodeEditor/CodeEditor'
 import PythonResultView from '../../components/PythonResultView/PythonResultView'
 import SolvedMark from '../../components/SolvedMark/SolvedMark'
+import VerificationNote from '../../components/VerificationNote/VerificationNote'
 import DatasetReference from './DatasetReference'
 
 const DIFFICULTY_FILTERS: Array<Difficulty | 'All'> = ['All', 'Easy', 'Medium', 'Hard', 'Interview']
@@ -17,8 +18,8 @@ type Verdict =
   | { status: 'idle' }
   | { status: 'running' }
   | { status: 'runtime-error'; result: PythonRunResult }
-  | { status: 'correct'; result: PythonRunResult }
-  | { status: 'incorrect'; result: PythonRunResult }
+  | { status: 'correct'; result: PythonRunResult; verification?: SubmissionResult }
+  | { status: 'incorrect'; result: PythonRunResult; verification?: SubmissionResult }
 
 function DataAnalytics() {
   const { user } = useAuth()
@@ -86,17 +87,43 @@ function DataAnalytics() {
       setVerdict({ status: 'runtime-error', result: actual })
       return
     }
-    const isCorrect = valuesMatch(actual.value, expected.value)
-    setVerdict({ status: isCorrect ? 'correct' : 'incorrect', result: actual })
+    const clientIsCorrect = valuesMatch(actual.value, expected.value)
+    setVerdict({ status: clientIsCorrect ? 'correct' : 'incorrect', result: actual })
 
     if (user) {
-      if (isCorrect) {
+      if (clientIsCorrect) {
         setSolvedIds((prev) => new Set(prev).add(selectedExercise.id))
       }
-      submitDataAnalyticsExercise(selectedExercise.id, code, isCorrect).catch(() => {
+      try {
+        const submission = await submitDataAnalyticsExercise(selectedExercise.id, code, clientIsCorrect)
+        // For Interview-tier exercises, the server independently re-runs
+        // the submission through the RestrictedPython sandbox (Phase 6) —
+        // if its verdict disagrees with what was just computed client-side
+        // via Pyodide, the server's is authoritative. Reconcile the
+        // displayed result and checkmark to match.
+        if (submission.gradedBy === 'server' && submission.isCorrect !== clientIsCorrect) {
+          setVerdict({
+            status: submission.isCorrect ? 'correct' : 'incorrect',
+            result: actual,
+            verification: submission,
+          })
+          setSolvedIds((prev) => {
+            const next = new Set(prev)
+            if (submission.isCorrect) next.add(selectedExercise.id)
+            else next.delete(selectedExercise.id)
+            return next
+          })
+        } else {
+          setVerdict((prev) =>
+            prev.status === 'correct' || prev.status === 'incorrect'
+              ? { ...prev, verification: submission }
+              : prev,
+          )
+        }
+      } catch {
         // Best-effort logging of an attempt; losing one submission record
         // shouldn't block the learner from seeing their result.
-      })
+      }
     }
   }
 
@@ -174,6 +201,11 @@ function DataAnalytics() {
         <p className="mt-1 text-xs text-slate-400">
           Assign your answer to a variable named <code className="font-mono">result</code>.
         </p>
+        {selectedExercise.difficulty === 'Interview' && !user && (
+          <p className="mt-1 text-xs text-slate-400">
+            Sign in to get this Interview-tier exercise independently re-checked server-side.
+          </p>
+        )}
 
         <div className="mt-4">
           <CodeEditor
@@ -230,6 +262,9 @@ function DataAnalytics() {
             <p className="mb-2 rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">
               ❌ Not quite — your code ran, but result doesn't match yet.
             </p>
+          )}
+          {(verdict.status === 'correct' || verdict.status === 'incorrect') && verdict.verification && (
+            <VerificationNote verification={verdict.verification} />
           )}
           {(verdict.status === 'correct' || verdict.status === 'incorrect') && (
             <>

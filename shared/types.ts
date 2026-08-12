@@ -70,3 +70,23 @@ export interface ProgressSummary {
   solvedExerciseIds: string[]
   projectStatuses: Record<string, ProjectStatus>
 }
+
+// --- Phase 6: server-side re-grading for Interview-tier questions ---
+
+/** Response shape of POST .../submissions. For Easy/Medium/Hard, the server
+ * just records whatever `isCorrect` the client (which already graded the
+ * attempt itself, in-browser) reported — see docs/PLAN.md's Phase 5 note on
+ * that trust boundary. For Interview-tier questions/exercises, the server
+ * independently re-executes the submission (sql.js on the server for SQL, a
+ * RestrictedPython sandbox for Python) and `gradedBy: 'server'` reflects
+ * that its own `isCorrect` is authoritative, not just relayed. `gradedBy`
+ * falls back to 'client' (with `serverNote` explaining why) if server-side
+ * re-grading itself couldn't run — e.g. the Python sandbox isn't installed
+ * on this deployment — so an infra gap never blocks a learner from seeing a
+ * result. */
+export interface SubmissionResult {
+  id: string
+  isCorrect: boolean
+  gradedBy: 'client' | 'server'
+  serverNote?: string
+}

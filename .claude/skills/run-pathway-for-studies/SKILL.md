@@ -27,6 +27,14 @@ cd ..
 
 `server/.env` needs `DATABASE_URL`, `PORT`, and `JWT_SECRET` — copy `server/.env.example` and fill in a random string for `JWT_SECRET` if `.env` doesn't exist yet.
 
+Phase 6 (Interview-tier server-side re-grading) additionally needs Python + RestrictedPython/pandas/numpy on PATH for the server process:
+
+```bash
+python -m pip install -r server/python/requirements.txt
+```
+
+If that's not installed, Interview-tier submissions still work — the server detects the sandbox is unavailable and falls back to trusting the client's own grading (`gradedBy: 'client'`, with a `serverNote` explaining why) rather than failing. The SQL half of Phase 6 (server-side sql.js re-grading) has no extra setup — it's already a server dependency.
+
 ## Run (agent path)
 
 Start both dev servers from the repo root, poll until both actually respond (don't fixed-`sleep` — the client's first Vite boot took ~11s in this environment), then run the driver:
@@ -40,7 +48,7 @@ cd .claude/skills/run-pathway-for-studies
 node driver.cjs
 ```
 
-The driver registers a throwaway user, then exercises one representative flow per track: SQL Practice (wrong query → correct query, sql.js grading), sign-up + progress persistence (solve a question, reload, confirm the checkmark survived — proves it round-tripped through the database, not just local state), AI Projects (set a status), and Data Analytics (wrong code → correct code, Pyodide grading). It exits 0 with `N browser console error(s)` printed (should be 0), or exits 1 and prints `DRIVER FAILED` with the Playwright error on any assertion/timeout failure.
+The driver registers a throwaway user, then exercises one representative flow per track: SQL Practice (wrong query → correct query, sql.js grading), sign-up + progress persistence (solve a question, reload, confirm the checkmark survived — proves it round-tripped through the database, not just local state), AI Projects (set a status), Data Analytics (wrong code → correct code, Pyodide grading), and Phase 6's server-side re-grading for Interview-tier questions (a correct answer through the real UI shows the "Server-verified" badge; a raw `fetch()` call from the page context — the real UI can't lie about its own grading, so this is the only way to actually exercise the check — confirms the server overrides a dishonest `isCorrect: true` self-report to `false`). It exits 0 with `N browser console error(s)` printed (should be 0), or exits 1 and prints `DRIVER FAILED` with the Playwright error (or `REGRESSION: ...` for the Phase 6 trust-boundary check specifically) on any assertion/timeout failure.
 
 Screenshots land in `.claude/skills/run-pathway-for-studies/screenshots/` (gitignored — regenerated each run):
 
@@ -51,6 +59,7 @@ Screenshots land in `.claude/skills/run-pathway-for-studies/screenshots/` (gitig
 | `03-sql-solved-after-reload.png` | Signed-in, solved-question checkmark surviving a full page reload |
 | `04-ai-project-status.png` | AI Projects, a project's status dropdown set to "in-progress" |
 | `05-python-correct.png` | Data Analytics, correct Python code graded ✅ |
+| `06-sql-interview-verified.png` | SQL Practice, an Interview-tier question showing the "🔒 Server-verified" badge |
 
 Stop the servers when done:
 
@@ -80,6 +89,8 @@ No automated test suite yet (`client/`, `server/` each only have `build`/`typech
 - **Data Analytics grading runs two Pyodide calls concurrently** (`Promise.all` in `DataAnalytics.tsx`: the learner's code and the solution). `client/src/lib/pythonEngine.ts` passes arguments to the shared Python interpreter as direct function-call arguments specifically to avoid a shared-globals race between those two concurrent calls (see `docs/PLAN.md` "Bugs found by actually running the app" for the full story). The driver's Data Analytics step exercises exactly this concurrent path — if it ever regresses, expect the driver to show "Correct!" for a deliberately wrong answer.
 - **Killing `npm run dev`'s children on Windows**: `$!` after backgrounding only captures the `concurrently`/npm wrapper PID, not the actual `vite`/`tsx` node processes, and plain `kill` on that PID doesn't take the children with it. Match on command line instead (see the PowerShell one-liner above).
 - **First Vite boot is slow** (~11s observed, dependency pre-bundling) — a `timeout 30` poll loop can be too tight; `timeout 45` was needed in this environment.
+- **The relative-path arithmetic for reaching `datasets/` from `server/src/lib/*.ts` is easy to get off by one.** `server/src/lib/` is 3 directories deep from the repo root, so it takes exactly 3 `../` to get back out — `../../../datasets/...`, not 4. Got this wrong in both `sqlEngine.ts` and `pythonSandbox.ts` on the first pass; the Python one only surfaced when testing with a dataset-backed exercise (`ENOENT`/`FileNotFoundError` — the no-dataset test cases don't touch this code path at all, so they passed regardless).
+- **A real UI can never exercise "does the server actually re-check this," only "did I compute the right answer."** The client always self-reports its own grading honestly — there's no UI control that submits a mismatched `isCorrect`. To test that Interview-tier server-side re-grading actually catches a lie (not just that the happy path works), the driver calls `fetch()` directly from the page context (`page.evaluate`) with a deliberately wrong query paired with `isCorrect: true`. That's a legitimate driving technique, not a hack — it's testing an API-level contract, and clicking through the UI structurally cannot reach it.
 
 ## Troubleshooting
 
