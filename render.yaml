@@ -29,7 +29,5 @@ services:
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
-      # Placeholder until the Vercel client is deployed — update this to the
-      # real Vercel URL afterward (docs/DEPLOY.md step 3), then redeploy.
       - key: CORS_ORIGIN
-        value: https://placeholder.vercel.app
+        value: https://client-puce-nu-10.vercel.app
