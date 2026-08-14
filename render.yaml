@@ -13,10 +13,15 @@ services:
     rootDir: server
     plan: free
     buildCommand: npm install
-    # Applies pending migrations, then starts the server — simplest approach
-    # for a low-traffic personal app (see docs/DEPLOY.md's caveat about a
-    # real production setup using a separate release step instead).
-    startCommand: npx prisma migrate deploy && npm start
+    # Applies pending migrations, seeds (safe to re-run — prisma:seed
+    # upserts), then starts the server. This has to live in startCommand,
+    # not preDeployCommand — Render's pre-deploy step is paid-plan-only
+    # ("Predeploy command not run. Commands can only run on paid instance
+    # types" on the free plan this app deploys on) — simplest viable
+    # approach for a low-traffic personal app on the free tier (see
+    # docs/DEPLOY.md's caveat about a real production setup using a
+    # separate release step instead, which would need a paid plan here).
+    startCommand: npx prisma migrate deploy && npm run prisma:seed && npm start
     envVars:
       - key: DATABASE_URL
         fromDatabase:
