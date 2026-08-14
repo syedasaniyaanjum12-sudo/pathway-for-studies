@@ -1,8 +1,9 @@
-// Dev datasource is SQLite (zero setup — just a file). Swapping to Postgres
-// later (per docs/PLAN.md) is a one-line change: provider "postgresql" and a
-// DATABASE_URL pointing at a real server — the models below don't change.
+// Switched from SQLite to Postgres for the Render deploy (see
+// docs/DEPLOY.md) — migrations were regenerated against this provider.
+// Local dev now needs a real Postgres DATABASE_URL too (the old
+// file:./dev.db SQLite URL no longer works against this schema).
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
