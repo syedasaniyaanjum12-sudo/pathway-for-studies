@@ -30,4 +30,4 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGIN
-        value: https://client-puce-nu-10.vercel.app
+        value: https://pathway-for-studies.vercel.app
