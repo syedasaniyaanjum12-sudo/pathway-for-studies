@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import type { ProgressSummary } from '../../../../shared/types'
 import { useAuth } from '../../context/AuthContext'
 import { fetchSqlQuestions, fetchDataAnalyticsExercises, fetchAiProjects, fetchProgress } from '../../lib/api'
+import LevelProgress from '../../components/LevelProgress/LevelProgress'
 
 const TRACKS = [
   {
@@ -36,23 +38,27 @@ interface TrackCounts {
 function Home() {
   const { user } = useAuth()
   const [counts, setCounts] = useState<TrackCounts>({})
+  const [progress, setProgress] = useState<ProgressSummary | null>(null)
 
   useEffect(() => {
     if (!user) {
       setCounts({})
+      setProgress(null)
       return
     }
     Promise.all([fetchSqlQuestions(), fetchDataAnalyticsExercises(), fetchAiProjects(), fetchProgress()])
-      .then(([questions, exercises, projects, progress]) => {
+      .then(([questions, exercises, projects, fetchedProgress]) => {
         setCounts({
-          sqlSolved: progress.solvedSqlQuestionIds.length,
+          sqlSolved: fetchedProgress.solvedSqlQuestionIds.length,
           sqlTotal: questions.length,
-          exercisesSolved: progress.solvedExerciseIds.length,
+          exercisesSolved: fetchedProgress.solvedExerciseIds.length,
           exercisesTotal: exercises.length,
-          projectsStarted: Object.values(progress.projectStatuses).filter((s) => s !== 'not-started')
-            .length,
+          projectsStarted: Object.values(fetchedProgress.projectStatuses).filter(
+            (s) => s !== 'not-started',
+          ).length,
           projectsTotal: projects.length,
         })
+        setProgress(fetchedProgress)
       })
       .catch(() => {
         // Non-critical — the cards work fine without progress counts.
@@ -82,6 +88,34 @@ function Home() {
       </p>
       {!user && (
         <p className="mt-1 text-sm text-slate-400">Sign in to track your progress across all three tracks.</p>
+      )}
+      <Link
+        to="/world-map"
+        className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-500"
+      >
+        🗺️ View your World Map — the full journey from Level 0 to Level 10
+      </Link>
+      {progress && (
+        <div className="mt-6">
+          <LevelProgress progress={progress} />
+          {progress.unlockedSkills.length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Skills unlocked ({progress.unlockedSkills.length})
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {progress.unlockedSkills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700"
+                  >
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       )}
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         {TRACKS.map((track) => (

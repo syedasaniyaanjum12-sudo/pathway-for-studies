@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { python } from '@codemirror/lang-python'
 import type { DataAnalyticsExercise, Difficulty, SubmissionResult } from '../../../../shared/types'
+import { getWorldById } from '../../../../shared/data/worlds'
 import { fetchDataAnalyticsExercises, fetchProgress, submitDataAnalyticsExercise } from '../../lib/api'
 import { runPython, warmUpEngine, type PythonRunResult } from '../../lib/pythonEngine'
 import { valuesMatch } from '../../../../shared/grading/pythonGrading'
@@ -25,10 +27,19 @@ type Verdict =
 
 function DataAnalytics() {
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [exercises, setExercises] = useState<DataAnalyticsExercise[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | 'All'>('All')
   const [search, setSearch] = useState('')
+
+  // World Map (Phase 2) deep-links here with ?world=<id> — an additional
+  // topic filter layered on top of difficulty/search, cleared via the
+  // banner below (which just drops the query param).
+  const activeWorld = useMemo(() => {
+    const worldId = searchParams.get('world')
+    return worldId ? getWorldById(worldId) : undefined
+  }, [searchParams])
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [showHint, setShowHint] = useState(false)
@@ -64,8 +75,11 @@ function DataAnalytics() {
 
   const visibleExercises = useMemo(() => {
     if (!exercises) return []
+    const byWorld = activeWorld?.topics
+      ? exercises.filter((ex) => activeWorld.topics!.includes(ex.topic))
+      : exercises
     const byDifficulty =
-      difficultyFilter === 'All' ? exercises : exercises.filter((ex) => ex.difficulty === difficultyFilter)
+      difficultyFilter === 'All' ? byWorld : byWorld.filter((ex) => ex.difficulty === difficultyFilter)
     const term = search.trim().toLowerCase()
     if (!term) return byDifficulty
     return byDifficulty.filter(
@@ -74,11 +88,19 @@ function DataAnalytics() {
         ex.topic.toLowerCase().includes(term) ||
         ex.prompt.toLowerCase().includes(term),
     )
-  }, [exercises, difficultyFilter, search])
+  }, [exercises, activeWorld, difficultyFilter, search])
 
   function clearFilters() {
     setDifficultyFilter('All')
     setSearch('')
+  }
+
+  function clearWorldFilter() {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('world')
+      return next
+    })
   }
 
   const selectedExercise = exercises?.find((ex) => ex.id === selectedExerciseId) ?? null
@@ -158,6 +180,20 @@ function DataAnalytics() {
   return (
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
       <aside>
+        {activeWorld && (
+          <div className="mb-3 flex items-center justify-between gap-2 rounded-md bg-violet-50 px-3 py-2 text-sm text-violet-800">
+            <span>
+              <span aria-hidden>{activeWorld.icon}</span> World: <strong>{activeWorld.title}</strong>
+            </span>
+            <button
+              type="button"
+              onClick={clearWorldFilter}
+              className="shrink-0 text-xs font-medium text-violet-600 hover:text-violet-800"
+            >
+              Clear
+            </button>
+          </div>
+        )}
         <div className="mb-3">
           <SearchInput value={search} onChange={setSearch} placeholder="Search exercises…" />
         </div>

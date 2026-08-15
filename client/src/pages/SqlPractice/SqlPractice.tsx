@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { Difficulty, SqlQuestion, SubmissionResult } from '../../../../shared/types'
+import { getWorldById } from '../../../../shared/data/worlds'
 import { fetchSqlQuestions, fetchProgress, submitSqlQuestion } from '../../lib/api'
 import { runQuery, type QueryResult } from '../../lib/sqlEngine'
 import { resultsMatch } from '../../../../shared/grading/sqlGrading'
@@ -24,10 +26,19 @@ type Verdict =
 
 function SqlPractice() {
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [questions, setQuestions] = useState<SqlQuestion[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | 'All'>('All')
   const [search, setSearch] = useState('')
+
+  // World Map (Phase 2) deep-links here with ?world=<id> — an additional
+  // topic filter layered on top of difficulty/search, not a replacement for
+  // them. Cleared via the banner below, which just drops the query param.
+  const activeWorld = useMemo(() => {
+    const worldId = searchParams.get('world')
+    return worldId ? getWorldById(worldId) : undefined
+  }, [searchParams])
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [showHint, setShowHint] = useState(false)
@@ -59,8 +70,11 @@ function SqlPractice() {
 
   const visibleQuestions = useMemo(() => {
     if (!questions) return []
+    const byWorld = activeWorld?.topics
+      ? questions.filter((q) => activeWorld.topics!.includes(q.topic))
+      : questions
     const byDifficulty =
-      difficultyFilter === 'All' ? questions : questions.filter((q) => q.difficulty === difficultyFilter)
+      difficultyFilter === 'All' ? byWorld : byWorld.filter((q) => q.difficulty === difficultyFilter)
     const term = search.trim().toLowerCase()
     if (!term) return byDifficulty
     return byDifficulty.filter(
@@ -69,11 +83,19 @@ function SqlPractice() {
         q.topic.toLowerCase().includes(term) ||
         q.prompt.toLowerCase().includes(term),
     )
-  }, [questions, difficultyFilter, search])
+  }, [questions, activeWorld, difficultyFilter, search])
 
   function clearFilters() {
     setDifficultyFilter('All')
     setSearch('')
+  }
+
+  function clearWorldFilter() {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('world')
+      return next
+    })
   }
 
   const selectedQuestion = questions?.find((q) => q.id === selectedQuestionId) ?? null
@@ -157,6 +179,20 @@ function SqlPractice() {
   return (
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
       <aside>
+        {activeWorld && (
+          <div className="mb-3 flex items-center justify-between gap-2 rounded-md bg-violet-50 px-3 py-2 text-sm text-violet-800">
+            <span>
+              <span aria-hidden>{activeWorld.icon}</span> World: <strong>{activeWorld.title}</strong>
+            </span>
+            <button
+              type="button"
+              onClick={clearWorldFilter}
+              className="shrink-0 text-xs font-medium text-violet-600 hover:text-violet-800"
+            >
+              Clear
+            </button>
+          </div>
+        )}
         <div className="mb-3">
           <SearchInput value={search} onChange={setSearch} placeholder="Search questions…" />
         </div>
