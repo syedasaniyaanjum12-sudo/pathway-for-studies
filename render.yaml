@@ -12,7 +12,15 @@ services:
     runtime: node
     rootDir: server
     plan: free
-    buildCommand: npm install
+    # `npm install`'s own postinstall (package.json) now runs `prisma
+    # generate` too, but that only fires if npm actually re-runs install for
+    # @prisma/client — Render can reuse a cached node_modules across deploys
+    # when no dependency changed (only schema.prisma did, e.g. adding the
+    # Quiz/MiniChallenge/BossChallenge models), which silently skips it and
+    # left a stale generated client missing the new models. Explicit
+    # `prisma generate` here means every deploy regenerates the client
+    # against the current schema.prisma, regardless of node_modules caching.
+    buildCommand: npm install && npx prisma generate
     # Applies pending migrations, seeds (safe to re-run — prisma:seed
     # upserts), then starts the server. This has to live in startCommand,
     # not preDeployCommand — Render's pre-deploy step is paid-plan-only
