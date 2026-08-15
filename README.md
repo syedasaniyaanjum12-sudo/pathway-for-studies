@@ -8,6 +8,8 @@ A learning platform with three tracks:
 
 Content (questions/exercises/projects) is served by a small Express + Prisma API. Grading happens client-side (sql.js/Pyodide) for Easy/Medium/Hard; for Interview-tier questions, the server *also* independently re-runs and grades your submission (see "Server-side re-grading" below), so a right answer means the server checked it, not just your own browser. Signing in (email/password) saves your progress — solved questions/exercises and project status — across sessions.
 
+Signed-in progress is framed as an RPG-style career path: solving questions/exercises and completing projects earns XP, which levels you up from **LEVEL 0 — Beginner** to **LEVEL 10 — Job-Ready AI Engineer**, shown on the Home page along with the topics/skills you've unlocked so far. The **World Map** (`/world-map`) groups that same content into 11 themed "Worlds" laid out as a career path, each unlocking at a level — click into one to jump straight to its questions/exercises/projects, pre-filtered. Each World also has a 4-question concept **Quiz**, and the 7 SQL/Data Analytics Worlds each have a timed **Mini Challenge** (an existing question against a countdown clock) and a **Boss Challenge** (a harder, multi-part capstone with its own "Boss HP" bar) — all three linked straight from their World Map card, which shows a "🏆 World Complete" badge once a World's boss is defeated. See `docs/PLAN.md`'s "Gamification plan" section for the full level curve, world list, and what's still deferred (badges/streaks, the full per-topic lesson loop).
+
 See [`docs/PLAN.md`](docs/PLAN.md) for the full architecture, tech stack, folder structure, and phased build-out plan, and [`docs/DEPLOY.md`](docs/DEPLOY.md) for deploying to Vercel + Render.
 
 ## Development
@@ -39,7 +41,7 @@ For Interview-difficulty questions/exercises, the server independently re-runs y
 
 ## Status
 
-**Phase 7 complete** — feature-complete and deploy-ready:
+**Phase 11 complete** — RPG career progression (XP/Levels 0-10, skills unlocked, a World Map grouping all content into a leveled career path, per-World Quizzes, timed Mini Challenges, and multi-part Boss Challenges) on top of the Phase 7 feature-complete, deploy-ready app:
 - SQL Practice: 24 questions, sql.js, with search + difficulty filter
 - AI Engineer Projects: 20 projects across 4 levels, with search + level filter
 - Data Analytics: 19 exercises (NumPy/Pandas/Data Cleaning/Missing Values/EDA/Matplotlib), running in-browser via Pyodide, with search + difficulty filter

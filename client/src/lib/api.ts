@@ -7,6 +7,15 @@ import type {
   ProgressSummary,
   ProjectStatus,
   SubmissionResult,
+  Quiz,
+  QuizAttemptRequest,
+  QuizAttemptResult,
+  MiniChallenge,
+  MiniChallengeAttemptRequest,
+  MiniChallengeAttemptResult,
+  BossChallenge,
+  BossChallengeAttemptRequest,
+  BossChallengeAttemptResult,
 } from '../../../shared/types'
 import { getToken } from './authStorage'
 
@@ -110,6 +119,51 @@ export function setProjectStatus(projectId: string, status: ProjectStatus): Prom
   return request(`/api/ai-projects/${projectId}/status`, {
     method: 'PUT',
     body: { status },
+    auth: true,
+  })
+}
+
+// --- Phase 3 (Gamification): Quizzes & Mini Challenges ---
+
+export function fetchQuizzes(): Promise<Quiz[]> {
+  return request('/api/quizzes')
+}
+
+export function submitQuizAttempt(
+  quizId: string,
+  choices: QuizAttemptRequest['choices'],
+): Promise<QuizAttemptResult> {
+  return request(`/api/quizzes/${quizId}/attempts`, { method: 'POST', body: { choices }, auth: true })
+}
+
+export function fetchMiniChallenges(): Promise<MiniChallenge[]> {
+  return request('/api/mini-challenges')
+}
+
+export function submitMiniChallengeAttempt(
+  challengeId: string,
+  attempt: MiniChallengeAttemptRequest,
+): Promise<MiniChallengeAttemptResult> {
+  return request(`/api/mini-challenges/${challengeId}/attempts`, {
+    method: 'POST',
+    body: attempt,
+    auth: true,
+  })
+}
+
+// --- Phase 4 (Gamification): Boss Challenges ---
+
+export function fetchBossChallenges(): Promise<BossChallenge[]> {
+  return request('/api/boss-challenges')
+}
+
+export function submitBossChallengeAttempt(
+  challengeId: string,
+  correctPartIds: BossChallengeAttemptRequest['correctPartIds'],
+): Promise<BossChallengeAttemptResult> {
+  return request(`/api/boss-challenges/${challengeId}/attempts`, {
+    method: 'POST',
+    body: { correctPartIds },
     auth: true,
   })
 }

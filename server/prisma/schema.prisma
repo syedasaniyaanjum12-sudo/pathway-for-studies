@@ -30,7 +30,9 @@ model DataAnalyticsExercise {
   difficulty   String
   topic        String
   prompt       String
-  /** Array of {variable, file} — see shared/types.ts DatasetBinding. */
+  /**
+   * Array of {variable, file} — see shared/types.ts DatasetBinding.
+   */
   datasets     Json
   solutionCode String
   hint         String
@@ -44,9 +46,13 @@ model AiProject {
   title       String
   level       String
   description String
-  /** string[] */
+  /**
+   * string[]
+   */
   techStack   Json
-  /** string[] */
+  /**
+   * string[]
+   */
   skills      Json
 
   statuses UserProjectStatus[]
@@ -60,9 +66,12 @@ model User {
   passwordHash String
   createdAt    DateTime @default(now())
 
-  sqlSubmissions          SqlSubmission[]
+  sqlSubmissions           SqlSubmission[]
   dataAnalyticsSubmissions DataAnalyticsSubmission[]
-  projectStatuses         UserProjectStatus[]
+  projectStatuses          UserProjectStatus[]
+  quizAttempts             QuizAttempt[]
+  miniChallengeAttempts    MiniChallengeAttempt[]
+  bossChallengeAttempts    BossChallengeAttempt[]
 }
 
 // One row per attempt (not just the latest) — a simple, honest activity log.
@@ -70,12 +79,12 @@ model User {
 // for that (userId, questionId) pair, computed at query time rather than a
 // separate mutable "solved" flag that could drift from the submission log.
 model SqlSubmission {
-  id              String   @id @default(cuid())
-  userId          String
-  questionId      String
-  submittedQuery  String
-  isCorrect       Boolean
-  submittedAt     DateTime @default(now())
+  id             String   @id @default(cuid())
+  userId         String
+  questionId     String
+  submittedQuery String
+  isCorrect      Boolean
+  submittedAt    DateTime @default(now())
 
   user     User        @relation(fields: [userId], references: [id])
   question SqlQuestion @relation(fields: [questionId], references: [id])
@@ -108,4 +117,101 @@ model UserProjectStatus {
   project AiProject @relation(fields: [projectId], references: [id])
 
   @@unique([userId, projectId])
+}
+
+// --- Phase 3 (Gamification): Quizzes & Mini Challenges ---
+// Both are 1:1 with a World (shared/data/worlds.ts) — id IS the WorldDef.id.
+// See docs/PLAN.md's "Gamification plan" for the full design.
+
+model Quiz {
+  id        String @id
+  title     String
+  /**
+   * QuizQuestion[] (shared/types.ts) — includes the answer key.
+   * GET /api/quizzes strips correctChoiceId/explanation before responding;
+   * grading reads this full copy server-side (server/src/routes/quizzes.ts).
+   */
+  questions Json
+
+  attempts QuizAttempt[]
+}
+
+// One row per attempt (not just the latest), same append-only-log
+// philosophy as SqlSubmission/DataAnalyticsSubmission — "has this learner
+// passed this quiz" is computed at query time from whether any passed:true
+// row exists, not a separate mutable flag.
+model QuizAttempt {
+  id           String   @id @default(cuid())
+  userId       String
+  quizId       String
+  correctCount Int
+  totalCount   Int
+  passed       Boolean
+  submittedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  quiz Quiz @relation(fields: [quizId], references: [id])
+
+  @@index([userId, quizId])
+}
+
+model MiniChallenge {
+  id               String @id
+  track            String // 'sql' | 'data-analytics'
+  refId            String // SqlQuestion.id or DataAnalyticsExercise.id, per `track`
+  timeLimitSeconds Int
+  flavorText       String
+
+  attempts MiniChallengeAttempt[]
+}
+
+model MiniChallengeAttempt {
+  id             String   @id @default(cuid())
+  userId         String
+  challengeId    String
+  elapsedSeconds Int
+  succeeded      Boolean // isCorrect && elapsedSeconds <= timeLimitSeconds
+  submittedAt    DateTime @default(now())
+
+  user      User          @relation(fields: [userId], references: [id])
+  challenge MiniChallenge @relation(fields: [challengeId], references: [id])
+
+  @@index([userId, challengeId])
+}
+
+// --- Phase 4 (Gamification): Boss Challenges ---
+// A World's capstone: harder, multi-part content (not a rehash of an
+// existing question, unlike MiniChallenge) — id IS the WorldDef.id, same
+// 1:1 convention. See docs/PLAN.md's "Gamification plan" for the full design.
+
+model BossChallenge {
+  id        String @id
+  track     String // 'sql' | 'data-analytics'
+  title     String
+  introText String
+  /**
+   * BossChallengePart[] (shared/types.ts) — each part has its own
+   * solutionQuery/solutionCode, graded client-side by the same engine as
+   * the rest of that track (sql.js/Pyodide); the server can't re-execute
+   * either, so it validates attempts structurally instead (see
+   * server/src/routes/bossChallenges.ts).
+   */
+  parts     Json
+
+  attempts BossChallengeAttempt[]
+}
+
+model BossChallengeAttempt {
+  id           String   @id @default(cuid())
+  userId       String
+  challengeId  String
+  correctCount Int
+  totalCount   Int
+  defeated     Boolean // correctCount === totalCount
+  submittedAt  DateTime @default(now())
+
+  user      User          @relation(fields: [userId], references: [id])
+  challenge BossChallenge @relation(fields: [challengeId], references: [id])
+
+  @@index([userId, challengeId])
 }

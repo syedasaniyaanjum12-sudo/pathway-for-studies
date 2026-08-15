@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
 const NAV_LINKS = [
+  { to: '/world-map', label: '🗺️ World Map' },
   { to: '/sql-practice', label: 'SQL Practice' },
   { to: '/data-analytics', label: 'Data Analytics' },
   { to: '/ai-projects', label: 'AI Engineer Projects' },

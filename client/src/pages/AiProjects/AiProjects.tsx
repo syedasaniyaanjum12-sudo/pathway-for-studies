@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { AiProject, ProjectLevel, ProjectStatus } from '../../../../shared/types'
+import { getWorldById } from '../../../../shared/data/worlds'
 import { fetchAiProjects, fetchProgress, setProjectStatus } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import ProjectCard from '../../components/ProjectCard/ProjectCard'
@@ -16,10 +18,19 @@ const LEVEL_FILTERS: Array<ProjectLevel | 'All'> = [
 
 function AiProjects() {
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [projects, setProjects] = useState<AiProject[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [levelFilter, setLevelFilter] = useState<ProjectLevel | 'All'>('All')
   const [search, setSearch] = useState('')
+
+  // World Map (Phase 2) deep-links here with ?world=<id> — an additional
+  // level filter layered on top of the level-filter buttons/search, cleared
+  // via the banner below (which just drops the query param).
+  const activeWorld = useMemo(() => {
+    const worldId = searchParams.get('world')
+    return worldId ? getWorldById(worldId) : undefined
+  }, [searchParams])
   const [statuses, setStatuses] = useState<Record<string, ProjectStatus>>({})
 
   useEffect(() => {
@@ -42,7 +53,10 @@ function AiProjects() {
 
   const visibleProjects = useMemo(() => {
     if (!projects) return []
-    const byLevel = levelFilter === 'All' ? projects : projects.filter((p) => p.level === levelFilter)
+    const byWorld = activeWorld?.projectLevel
+      ? projects.filter((p) => p.level === activeWorld.projectLevel)
+      : projects
+    const byLevel = levelFilter === 'All' ? byWorld : byWorld.filter((p) => p.level === levelFilter)
     const term = search.trim().toLowerCase()
     if (!term) return byLevel
     return byLevel.filter(
@@ -52,11 +66,19 @@ function AiProjects() {
         p.techStack.some((tech) => tech.toLowerCase().includes(term)) ||
         p.skills.some((skill) => skill.toLowerCase().includes(term)),
     )
-  }, [projects, levelFilter, search])
+  }, [projects, activeWorld, levelFilter, search])
 
   function clearFilters() {
     setLevelFilter('All')
     setSearch('')
+  }
+
+  function clearWorldFilter() {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('world')
+      return next
+    })
   }
 
   function handleStatusChange(projectId: string, status: ProjectStatus) {
@@ -92,6 +114,21 @@ function AiProjects() {
         <p className="mt-1 text-xs text-slate-400">
           Sign in to track your status on each project.
         </p>
+      )}
+
+      {activeWorld && (
+        <div className="mt-4 flex max-w-sm items-center justify-between gap-2 rounded-md bg-violet-50 px-3 py-2 text-sm text-violet-800">
+          <span>
+            <span aria-hidden>{activeWorld.icon}</span> World: <strong>{activeWorld.title}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={clearWorldFilter}
+            className="shrink-0 text-xs font-medium text-violet-600 hover:text-violet-800"
+          >
+            Clear
+          </button>
+        </div>
       )}
 
       <div className="mt-4 max-w-sm">
